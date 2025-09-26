@@ -1,6 +1,5 @@
 #!/bin/bash
-# Script Shell Simple - Capture d'images PiCam
-# Version simplifiée qui prend une photo toutes les 5 secondes
+# Prend une photo toutes les 5 secondes
 
 # Configuration
 INTERVAL=5

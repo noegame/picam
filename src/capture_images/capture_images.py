@@ -2,26 +2,16 @@
 """
 Système PiCam - Capture automatique d'images
 Prend une photo toutes les 15 secondes et les sauvegarde dans le dossier data/
+Utilise la bibliothèque PiCamera2 (Raspberry Pi OS Bookworm et ultérieur)
 """
 
-import os
 import time
 import logging
 from datetime import datetime
 from pathlib import Path
+from typing import Optional
 
-try:
-    from picamera2 import Picamera2
-    PICAMERA_AVAILABLE = True
-except ImportError:
-    try:
-        import picamera
-        PICAMERA_AVAILABLE = True
-        LEGACY_PICAMERA = True
-    except ImportError:
-        PICAMERA_AVAILABLE = False
-        LEGACY_PICAMERA = False
-        import cv2  # Fallback pour les tests sans PiCamera
+from picamera2 import Picamera2
 
 class PiCamCapture:
     def __init__(self, data_dir="data", interval=15):
@@ -34,7 +24,7 @@ class PiCamCapture:
         """
         self.data_dir = Path(data_dir)
         self.interval = interval
-        self.camera = None
+        self.camera: Optional[Picamera2] = None
         self.running = False
         
         # Configuration du logging
@@ -50,62 +40,33 @@ class PiCamCapture:
         self.setup_camera()
     
     def setup_camera(self):
-        """Configure la caméra selon la disponibilité"""
+        """Configure la caméra PiCamera2"""
         try:
-            if PICAMERA_AVAILABLE:
-                if 'LEGACY_PICAMERA' in globals() and LEGACY_PICAMERA:
-                    # PiCamera legacy (Raspberry Pi OS Bullseye et antérieur)
-                    import picamera
-                    self.camera = picamera.PiCamera()
-                    self.camera.resolution = (1920, 1080)
-                    self.camera.framerate = 30
-                    self.camera_type = "picamera_legacy"
-                    self.logger.info("PiCamera legacy initialisée")
-                else:
-                    # PiCamera2 (Raspberry Pi OS Bookworm et ultérieur)
-                    self.camera = Picamera2()
-                    camera_config = self.camera.create_still_configuration(
-                        main={"size": (1920, 1080)}
-                    )
-                    self.camera.configure(camera_config)
-                    self.camera.start()
-                    self.camera_type = "picamera2"
-                    self.logger.info("PiCamera2 initialisée")
-            else:
-                # Fallback avec OpenCV (pour tests)
-                self.camera = cv2.VideoCapture(0)
-                self.camera.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
-                self.camera.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
-                self.camera_type = "opencv"
-                self.logger.warning("PiCamera non disponible, utilisation d'OpenCV")
+            self.camera = Picamera2()
+            camera_config = self.camera.create_still_configuration(
+                main={"size": (1920, 1080)}
+            )
+            self.camera.configure(camera_config)
+            self.camera.start()
+            self.logger.info("PiCamera2 initialisée avec succès")
                 
         except Exception as e:
             self.logger.error(f"Erreur lors de l'initialisation de la caméra: {e}")
             raise
     
-    def capture_image(self):
+    def capture_image(self) -> Optional[Path]:
         """Capture une image et la sauvegarde"""
         try:
+            if not self.camera:
+                raise Exception("Caméra non initialisée")
+                
             # Générer le nom de fichier avec timestamp
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             filename = f"picam_{timestamp}.jpg"
             filepath = self.data_dir / filename
             
-            if self.camera_type == "picamera2":
-                # PiCamera2
-                self.camera.capture_file(str(filepath))
-                
-            elif self.camera_type == "picamera_legacy":
-                # PiCamera legacy
-                self.camera.capture(str(filepath))
-                
-            elif self.camera_type == "opencv":
-                # OpenCV fallback
-                ret, frame = self.camera.read()
-                if ret:
-                    cv2.imwrite(str(filepath), frame)
-                else:
-                    raise Exception("Impossible de capturer l'image avec OpenCV")
+            # Capture avec PiCamera2
+            self.camera.capture_file(str(filepath))
             
             self.logger.info(f"Image capturée: {filename}")
             return filepath
@@ -145,12 +106,7 @@ class PiCamCapture:
         
         try:
             if self.camera:
-                if self.camera_type == "picamera2":
-                    self.camera.stop()
-                elif self.camera_type == "picamera_legacy":
-                    self.camera.close()
-                elif self.camera_type == "opencv":
-                    self.camera.release()
+                self.camera.stop()
                     
             self.logger.info("Système de capture arrêté")
             
@@ -173,7 +129,6 @@ class PiCamCapture:
 
 
 def main():
-    """Fonction principale"""
     print("=" * 50)
     print("Système PiCam - Capture automatique")
     print("=" * 50)
