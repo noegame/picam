@@ -40,7 +40,7 @@ sur votre ordinateur : ouvrir VLC et se connecter au flux réseau :
 ```
 sudo apt update && sudo apt upgrade -y && sudo reboot
 ```
-3. Configurer la connexion SSH
+3. Configurer la connexion SSH. Nous allons autoriser temporairement l'authentification par mot de passe afin de copier la clé publique SSH.
 ```
 sudo nano /etc/ssh/sshd_config
 ```
@@ -88,3 +88,4 @@ cd picam
 chmod u+x setup.sh 
 ./setup.sh
 ```
+La Raspberry Pi est maintenant fonctionnelle.
