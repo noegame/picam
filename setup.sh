@@ -12,5 +12,4 @@ sudo apt install -y libcamera-apps
 sudo apt install -y python3 
 sudo apt install -y python3-pip 
 sudo apt install -y python3-picamera2
-sudo apt install -y python3-socket
-sudo apt install -y python3-cv2
+sudo apt install -y python3-opencv

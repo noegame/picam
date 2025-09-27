@@ -22,6 +22,10 @@ libcamera-vid -t 0 \
   --inline \
   --listen on \
   -o tcp://0.0.0.0:8554
+
+libcamera-vid -t 0 --width 640 --height 480 --framerate 25 --codec h264 --inline --listen on -o tcp://0.0.0.0:8554
+
+
 ```
 sur votre ordinateur : ouvrir VLC et se connecter au flux réseau :
 ```tcp/h264://10.153.210.115:8554```
