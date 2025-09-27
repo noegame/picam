@@ -13,6 +13,22 @@
 
 ## Comment Tester la caméra rapidement
 
+D'abord vérifier que la caméra est bien détectée :
+```
+# Lister les caméras
+rpicam-hello --list-cameras
+
+# Test rapide d'affichage (5 secondes)
+rpicam-hello --timeout 5000
+
+# Test de capture d'image
+rpicam-still --output test.jpg --timeout 2000
+ls -la test.jpg
+
+# Si l'image est créée, l'afficher pour vérifier
+file test.jpg
+```
+
 Sur la raspberry : commande linux pour lancer le streaming vidéo avec libcamera-vid :
 ```
 libcamera-vid -t 0 \
@@ -28,7 +44,7 @@ libcamera-vid -t 0 --width 640 --height 480 --framerate 25 --codec h264 --inline
 
 ```
 sur votre ordinateur : ouvrir VLC et se connecter au flux réseau :
-```tcp/h264://10.153.210.115:8554```
+```tcp/h264://[IP de la PI]:8554```
 
 ### Prérequis
 
