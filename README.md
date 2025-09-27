@@ -14,7 +14,7 @@
 
 - [Git](https://git-scm.com/)
 - [Visual Studio Code](https://code.visualstudio.com/)
-
+- [MobaXterm](https://mobaxterm.mobatek.net/download-home-edition.html) (optionnel, mais recommandé, utile pour accéder au fichiers du Raspberry Pi)
 
 ## Installation de l'environnement raspberry pi
 
@@ -99,3 +99,5 @@ Prendre une photo et la récupérer sur votre PC afin de vérifier que la camér
 
 # Puis sur votre PC : récupérer le fichier
 scp roboteseo@192.168.68.52:~/picam/src/test_camera/camera_test_*.jpg $env:USERPROFILE\Downloads\
+# Si vous utilisez MobaXterm, vous pouvez aussi simplement glisser-déposer le fichier depuis la fenêtre de terminal.
+```
