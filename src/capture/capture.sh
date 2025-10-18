@@ -1,15 +1,16 @@
 #!/bin/bash
-# Prend une photo toutes les 5 secondes
+# Prend une photo toutes les 5 secondes et la sauvegarde dans le dossier picam/pictures/
 
 # Configuration
 INTERVAL=5
-DATA_DIR="data"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+DATA_DIR="$SCRIPT_DIR/../../pictures"
 
 # Créer le répertoire s'il n'existe pas
 mkdir -p "$DATA_DIR"
 
 echo "======================================"
-echo "🎥 PiCam Capture Simple - Shell"
+echo "PiCam - Capture d'images en continu"
 echo "======================================"
 echo "Intervalle: ${INTERVAL} secondes"
 echo "Dossier: ${DATA_DIR}/"

@@ -7,8 +7,8 @@
 - [Comment Tester la caméra rapidement](#comment-tester-la-caméra-rapidement)
 
 ## Description
-- captures_images : Programme Python qui capture automatiquement des photos toutes les 15 secondes avec la caméra du Raspberry Pi et les sauvegarde dans le dossier `data/`.
-- match viewer : Surveille le terrain et communique les états des caisses au robot.
+- check_camera.sh : Script bash pour vérifier rapidement le fonctionnement de la caméra Raspberry Pi.
+- capture.py : Script Python pour capturer des images à intervalles réguliers et les sauvegarder
 
 ## Prérequis
 
@@ -43,7 +43,7 @@ ssh-keygen
 ```
 5. Copier la clé publique sur le Raspberry Pi depuis powershell :
 ``` powershell
-type $env:USERPROFILE\.ssh\raspberrypi_robot.pub | ssh pi@192.168.68.52 "mkdir -p ~/.ssh && chmod 700 ~/.ssh && cat >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys"
+type $env:USERPROFILE\.ssh\raspberrypi_robot.pub | ssh pi@192.168.68.100 "mkdir -p ~/.ssh && chmod 700 ~/.ssh && cat >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys"
 ```
 6. Repasser en mode sécurisé
 ``` shell
@@ -61,7 +61,7 @@ sudo systemctl restart ssh
 
 **Pour se connecter à la raspberry pi:**
 ``` powershell
-ssh -i $env:USERPROFILE\.ssh\raspberrypi_robot roboteseo@192.168.68.52
+ssh -i $env:USERPROFILE\.ssh\raspberrypi_robot roboteseo@192.168.68.100
 ```
 
 7. Installer les dépendances nécessaires pour le projet
@@ -75,9 +75,9 @@ chmod u+x setup.sh
 La Raspberry Pi est maintenant fonctionnelle.
 
 
-## Comment Tester la caméra rapidement
+## Comment tester la caméra rapidement
 
-D'abord vérifier que la caméra est bien détectée :
+Vérifier que la caméra est bien détectée :
 ``` shell
 # Lister les caméras
 rpicam-hello --list-cameras
@@ -92,12 +92,15 @@ ls -la test.jpg
 # Si l'image est créée, l'afficher pour vérifier
 file test.jpg
 ```
-Prendre une photo et la récupérer sur votre PC afin de vérifier que la caméra fonctionne.
+Prendre une photo.
 ``` shell
-# Sur votre Pi : prendre juste la photo
-./quick_camera_test.sh
-
+cd ~/picam/src/test_camera/
+./camera_check.sh
+```
+Récupérer la photo sur votre PC :
+Si vous utilisez MobaXterm, vous pouvez aussi simplement glisser-déposer le fichier depuis la fenêtre de terminal.
+Sinon, utilisez la commande suivante pour le récupérer :
+``` powershell
 # Puis sur votre PC : récupérer le fichier
-scp roboteseo@192.168.68.52:~/picam/src/test_camera/camera_test_*.jpg $env:USERPROFILE\Downloads\
-# Si vous utilisez MobaXterm, vous pouvez aussi simplement glisser-déposer le fichier depuis la fenêtre de terminal.
+scp roboteseo@192.168.68.100:~/picam/src/test_camera/camera_test_*.jpg $env:USERPROFILE\Downloads\
 ```

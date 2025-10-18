@@ -1,5 +1,5 @@
 #!/bin/bash
-# quick_camera_test.sh - Test rapide caméra sans Python
+# Check the Raspberry Pi camera and optionally send a test photo to a PC
 # Usage: ./quick_camera_test.sh [IP_PC] [USERNAME_PC]
 
 # Configuration
