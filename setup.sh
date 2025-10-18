@@ -1,6 +1,12 @@
 #!/bin/bash
 # Script d'installation et configuration PiCam
 
+# Vérification des privilèges sudo
+if [ "$EUID" -ne 0 ]; then
+  echo "Ce script doit être exécuté avec sudo."
+  exit 1
+fi
+
 # Installation et mises à jour des paquets
 sudo apt update
 sudo apt upgrade -y
@@ -12,18 +18,34 @@ sudo apt install -y libcamera-apps
 sudo apt install -y python3 
 sudo apt install -y python3-pip 
 sudo apt install -y python3-picamera2
-sudo apt install -y python3-opencv
+#sudo apt install -y python3-opencv
 
-# Configuration d'une IP statique pour la Raspberry Pi
+# === Configuration d'une IP statique ===
 echo "Configuration de l'IP statique..."
-sudo nano /etc/dhcpcd.conf
-interface eth0
-static ip_address=192.168.1.50/24
-static routers=192.168.1.1
-static domain_name_servers=192.168.1.1 8.8.8.8
+
+STATIC_IP="192.168.1.50"            # IP fixe souhaitée
+ROUTER_IP="192.168.1.1"             # IP de la passerelle / routeur
+DNS_SERVERS="192.168.1.1 8.8.8.8"   # DNS local + Google
+INTERFACE="wlan0"                   # Interface Wi-Fi
+SUBNET="/24"                        # Masque de sous-réseau
+
+# Sauvegarde du fichier /etc/dhcpcd.conf.
+cp /etc/dhcpcd.conf /etc/dhcpcd.conf.backup_$(date +%Y%m%d_%H%M%S)
+# Ajout de la configuration statique
+
+cat <<EOF >> /etc/dhcpcd.conf
+
+# --- Configuration statique ajoutée automatiquement ---
+interface $INTERFACE
+static ip_address=${STATIC_IP}${SUBNET}
+static routers=${ROUTER_IP}
+static domain_name_servers=${DNS_SERVERS}
+# --------------------------------------------------------
+EOF
+
+sudo service dhcpcd restart
 
 # Connexion au wifi du club
-
 set -e
 
 SSID="RobotESEO-IoT"
@@ -47,16 +69,13 @@ network={
 EOF"
 fi
 
-# Redémarre le service pour appliquer les changements
-echo "Redémarrage du service wpa_supplicant..."
 sudo systemctl restart wpa_supplicant
-
-# Optionnel : tenter de se connecter immédiatement
 sudo wpa_cli -i wlan0 reconfigure || true
-
 echo "Configuration Wi-Fi terminée."
-echo "La raspberry Pi va redémarrer."
-wait 5 
 
 # Redémarrage de la Raspberry Pi
+echo "Notez bien mon adresse IP : $STATIC_IP"
+hostname -I
+echo "La raspberry Pi va redémarrer."
+sleep 5
 sudo reboot

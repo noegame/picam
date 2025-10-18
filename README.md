@@ -25,47 +25,47 @@
 sudo apt update && sudo apt upgrade -y && sudo reboot
 ```
 3. Configurer la connexion SSH. Nous allons autoriser temporairement l'authentification par mot de passe afin de copier la clé publique SSH.
-```
+``` bash 
 sudo nano /etc/ssh/sshd_config
 ```
 Modifier les lignes suivantes :
-```
+``` shell
 PasswordAuthentication yes
 PubkeyAuthentication yes
 ```
 Puis redémarrer le service SSH :
-```
+``` shell 
 sudo systemctl restart ssh
 ```
 4. Créer une paire de clés SSH sur votre ordinateur depuis powershell :
-```
+``` powershell
 ssh-keygen 
 ```
 5. Copier la clé publique sur le Raspberry Pi depuis powershell :
-```
+``` powershell
 type $env:USERPROFILE\.ssh\raspberrypi_robot.pub | ssh pi@192.168.68.52 "mkdir -p ~/.ssh && chmod 700 ~/.ssh && cat >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys"
 ```
 6. Repasser en mode sécurisé
-```
+``` shell
 sudo nano /etc/ssh/sshd_config
 ```
 Modifier les lignes suivantes :
-```
+```shell
 PasswordAuthentication no
 PubkeyAuthentication yes
 ```
 Puis redémarrer le service SSH :
-```
+``` shell
 sudo systemctl restart ssh
 ```
 
 **Pour se connecter à la raspberry pi:**
-```
+``` powershell
 ssh -i $env:USERPROFILE\.ssh\raspberrypi_robot roboteseo@192.168.68.52
 ```
 
 7. Installer les dépendances nécessaires pour le projet
-```
+``` shell
 sudo apt install git
 git clone https://github.com/noegame/picam
 cd picam
