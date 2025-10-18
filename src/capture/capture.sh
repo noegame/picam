@@ -38,6 +38,15 @@ while true; do
     filename="${timestamp}_capture_shell.jpg"
     filepath="${DATA_DIR}/${filename}"
     
+    # Essayer rpicam-still (Raspberry Pi OS Bookworm)
+    if command -v rpicam-still &> /dev/null; then
+        if rpicam-still --width 1920 --height 1080 --output "$filepath" --timeout 1000 --nopreview &>/dev/null; then
+            ((count++))
+            echo "[$(date '+%H:%M:%S')] ✅ Image $count: $filename"
+        else
+            echo "[$(date '+%H:%M:%S')] ❌ Échec de capture"
+        fi
+
     # Essayer libcamera-still (Raspberry Pi OS Bookworm)
     if command -v libcamera-still &> /dev/null; then
         if libcamera-still --width 1920 --height 1080 --output "$filepath" --timeout 1000 --nopreview &>/dev/null; then
