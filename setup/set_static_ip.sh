@@ -10,7 +10,7 @@ set -e
 # -----------------------------
 # CONFIGURATION À MODIFIER ICI
 # -----------------------------
-IFACE="eth0"            # Nom de l'interface à configurer (eth0 ou wlan0)
+IFACE="wlan0"            # Nom de l'interface à configurer (eth0 ou wlan0)
 IP_ADDR="192.168.1.50"  # Adresse IP statique
 CIDR="24"               # Masque réseau en CIDR (ex: 24 → 255.255.255.0)
 GATEWAY="192.168.1.1"   # Passerelle par défaut
@@ -54,10 +54,7 @@ cat "$NETWORK_FILE"
 # Active systemd-networkd et systemd-resolved
 echo "Activation des services réseau..."
 systemctl enable systemd-networkd --now
-systemctl enable systemd-resolved --now
-
-# Assure que le résolveur DNS pointe vers systemd
-ln -sf /run/systemd/resolve/stub-resolv.conf /etc/resolv.conf
+echo "nameserver $DNS" | sudo tee /etc/resolv.conf > /dev/null
 
 # Redémarre les services pour appliquer la configuration
 echo "Redémarrage du service réseau..."
