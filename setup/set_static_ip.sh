@@ -1,35 +1,44 @@
 #!/bin/bash
-# Script pour configurer une IP statique sur Raspberry Pi OS Bookworm
-# Fonctionne avec systemd-networkd (par défaut depuis Bookworm)
+# =====================================================
+# Script : set_static_ip.sh (non-interactif)
+# Objectif : Définir une adresse IP statique sur Raspberry Pi OS Bookworm
+# Auteur : ChatGPT (GPT-5)
+# =====================================================
 
 set -e
 
-echo "=== Configuration d'une IP statique sur Raspberry Pi OS Bookworm ==="
+# -----------------------------
+# CONFIGURATION À MODIFIER ICI
+# -----------------------------
+IFACE="eth0"            # Nom de l'interface à configurer (eth0 ou wlan0)
+IP_ADDR="192.168.1.50"  # Adresse IP statique
+CIDR="24"               # Masque réseau en CIDR (ex: 24 → 255.255.255.0)
+GATEWAY="192.168.1.1"   # Passerelle par défaut
+DNS="8.8.8.8"           # Serveur DNS
 
-# Vérifie que l'utilisateur est root
+# -----------------------------
+# SCRIPT
+# -----------------------------
+echo "Configuration automatique d'une IP statique sur $IFACE"
+
+# Vérifie que le script est exécuté en root
 if [ "$EUID" -ne 0 ]; then
   echo "Veuillez exécuter ce script avec sudo."
   exit 1
 fi
 
-# Liste les interfaces réseau
-echo "Interfaces détectées :"
-ip -o link show | awk -F': ' '{print $2}' | grep -v lo
-echo
-read -p "Entrez le nom de l'interface (ex: eth0 ou wlan0) : " IFACE
+# Vérifie que l’interface existe
+if ! ip link show "$IFACE" &> /dev/null; then
+  echo "Interface '$IFACE' introuvable."
+  exit 1
+fi
 
-# Demande les informations réseau
-read -p "Adresse IP (ex: 192.168.1.50) : " IP_ADDR
-read -p "Masque CIDR (ex: 24 pour 255.255.255.0) : " CIDR
-read -p "Passerelle (Gateway) (ex: 192.168.1.1) : " GATEWAY
-read -p "Serveur DNS (ex: 8.8.8.8) : " DNS
+# Chemin du fichier de configuration systemd-networkd
+NETWORK_FILE="/etc/systemd/network/10-${IFACE}.network"
 
-# Chemin du fichier de config
-CONF_FILE="/etc/systemd/network/10-${IFACE}.network"
+echo "Création du fichier de configuration réseau : $NETWORK_FILE"
 
-echo
-echo "Création du fichier de configuration : ${CONF_FILE}"
-cat <<EOF > "$CONF_FILE"
+cat <<EOF > "$NETWORK_FILE"
 [Match]
 Name=${IFACE}
 
@@ -39,23 +48,21 @@ Gateway=${GATEWAY}
 DNS=${DNS}
 EOF
 
-echo "Configuration écrite :"
-cat "$CONF_FILE"
-echo
+echo "Fichier réseau créé :"
+cat "$NETWORK_FILE"
 
 # Active systemd-networkd et systemd-resolved
 echo "Activation des services réseau..."
 systemctl enable systemd-networkd --now
 systemctl enable systemd-resolved --now
 
-# Liens symboliques (utile si resolv.conf n’est pas bien configuré)
+# Assure que le résolveur DNS pointe vers systemd
 ln -sf /run/systemd/resolve/stub-resolv.conf /etc/resolv.conf
 
-echo
+# Redémarre les services pour appliquer la configuration
 echo "Redémarrage du service réseau..."
 systemctl restart systemd-networkd
 
-echo
-echo "Configuration terminée !"
-echo "L'adresse IP ${IP_ADDR} est désormais statique sur ${IFACE}."
-echo "Un redémarrage est recommandé : sudo reboot"
+echo "Configuration terminée."
+echo "L'adresse IP ${IP_ADDR} est maintenant statique sur ${IFACE}."
+echo "Redémarrage recommandé : sudo reboot"

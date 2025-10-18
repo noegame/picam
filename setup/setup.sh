@@ -28,6 +28,4 @@ sudo bash ./setup_wifi.sh
 sudo bash ./set_static_ip.sh
 
 # Redémarrage de la Raspberry Pi
-echo "La raspberry Pi va redémarrer."
-sleep 5
-sudo reboot
+echo "Un redémarrage est recommandé : sudo reboot"

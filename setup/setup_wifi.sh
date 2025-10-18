@@ -15,7 +15,7 @@ echo "=== Configuration automatique des réseaux Wi-Fi ==="
 
 # Vérifie que le script est exécuté en root
 if [ "$EUID" -ne 0 ]; then
-  echo "❌ Veuillez exécuter ce script avec sudo."
+  echo "Veuillez exécuter ce script avec sudo."
   exit 1
 fi
 
