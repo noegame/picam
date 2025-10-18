@@ -68,7 +68,7 @@ ssh -i $env:USERPROFILE\.ssh\raspberrypi_robot roboteseo@192.168.68.52
 ``` shell
 sudo apt install git
 git clone https://github.com/noegame/picam
-cd picam
+cd picam/setup/
 chmod u+x setup.sh 
 ./setup.sh
 ```

@@ -1,0 +1,16 @@
+{
+  "wifis": [
+    {
+      "ssid": "partagenoe",
+      "password": "12345678"
+    },
+    {
+      "ssid": "RobotESEO-IoT",
+      "password": "RobotE5E0*"
+    },
+    {
+      "ssid": "Petite Grange",
+      "password": "C@stanea Sativa"
+    }
+  ]
+}
