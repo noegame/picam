@@ -34,7 +34,7 @@ count=0
 while true; do
     # Générer le nom de fichier avec timestamp
     timestamp=$(date '+%Y%m%d_%H%M%S')
-    filename="picam_${timestamp}.jpg"
+    filename="${timestamp}_capture_shell.jpg"
     filepath="${DATA_DIR}/${filename}"
     
     # Essayer libcamera-still (Raspberry Pi OS Bookworm)

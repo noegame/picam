@@ -62,7 +62,7 @@ class PiCamCapture:
                 
             # Générer le nom de fichier avec timestamp
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = f"picam_{timestamp}.jpg"
+            filename = f"{timestamp}_capture_python.jpg"
             filepath = self.data_dir / filename
             
             # Capture avec PiCamera2
