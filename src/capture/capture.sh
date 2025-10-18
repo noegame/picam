@@ -48,7 +48,7 @@ while true; do
         fi
 
     # Essayer libcamera-still (Raspberry Pi OS Bookworm)
-    if command -v libcamera-still &> /dev/null; then
+    elif command -v libcamera-still &> /dev/null; then
         if libcamera-still --width 1920 --height 1080 --output "$filepath" --timeout 1000 --nopreview &>/dev/null; then
             ((count++))
             echo "[$(date '+%H:%M:%S')] ✅ Image $count: $filename"
