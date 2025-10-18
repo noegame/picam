@@ -14,6 +14,14 @@ sudo apt install -y python3-pip
 sudo apt install -y python3-picamera2
 sudo apt install -y python3-opencv
 
+# Configuration d'une IP statique pour la Raspberry Pi
+echo "Configuration de l'IP statique..."
+sudo nano /etc/dhcpcd.conf
+interface eth0
+static ip_address=192.168.1.50/24
+static routers=192.168.1.1
+static domain_name_servers=192.168.1.1 8.8.8.8
+
 # Connexion au wifi du club
 
 set -e
@@ -47,3 +55,8 @@ sudo systemctl restart wpa_supplicant
 sudo wpa_cli -i wlan0 reconfigure || true
 
 echo "Configuration Wi-Fi terminée."
+echo "La raspberry Pi va redémarrer."
+wait 5 
+
+# Redémarrage de la Raspberry Pi
+sudo reboot
