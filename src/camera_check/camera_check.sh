@@ -1,6 +1,6 @@
 #!/bin/bash
 # Check the Raspberry Pi camera and optionally send a test photo to a PC
-# Usage: ./quick_camera_test.sh [IP_PC] [USERNAME_PC]
+# Usage: ./camera_check.sh [IP_PC] [USERNAME_PC]
 
 # Configuration
 TIMESTAMP=$(date '+%Y%m%d_%H%M%S')
@@ -8,7 +8,7 @@ TIMEOUT=2000  # 2 secondes
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PHOTO_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)/pictures"
 mkdir -p "$PHOTO_DIR" 2>/dev/null || { echo "Impossible de créer le dossier $PHOTO_DIR" >&2; exit 1; }
-PHOTO_NAME="$PHOTO_DIR/${TIMESTAMP}_camera_test.jpg"
+PHOTO_NAME="$PHOTO_DIR/${TIMESTAMP}_camera_check.jpg"
 
 # Couleurs pour l'affichage
 RED='\033[0;31m'

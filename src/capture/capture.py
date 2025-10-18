@@ -14,7 +14,7 @@ from typing import Optional
 from picamera2 import Picamera2
 
 class PiCamCapture:
-    def __init__(self, data_dir="/../../picam/pictures", interval=5):
+    def __init__(self, pict_dir=None, interval=5):
         """
         Initialise le système de capture
         
@@ -22,7 +22,14 @@ class PiCamCapture:
             data_dir (str): Répertoire de sauvegarde des images
             interval (int): Intervalle entre les captures en secondes
         """
-        self.data_dir = Path(data_dir)
+        # Si aucun répertoire passé, utiliser le dossier repo_root/pictures
+        if pict_dir:
+            self.pictures_dir = Path(pict_dir)
+        else:
+            # __file__ est c:\...\picam\src\capture\capture.py
+            # parents[2] -> c:\...\picam
+            repo_root = Path(__file__).resolve().parents[2]
+            self.pictures_dir = repo_root / "pictures"
         self.interval = interval
         self.camera: Optional[Picamera2] = None
         self.running = False
@@ -34,9 +41,9 @@ class PiCamCapture:
         )
         self.logger = logging.getLogger(__name__)
         
-        # Créer le répertoire data s'il n'existe pas
-        self.data_dir.mkdir(exist_ok=True)
-        
+        # Créer le répertoire pictures s'il n'existe pas (avec parents)
+        self.pictures_dir.mkdir(parents=True, exist_ok=True)
+
         self.setup_camera()
     
     def setup_camera(self):
@@ -63,7 +70,7 @@ class PiCamCapture:
             # Générer le nom de fichier avec timestamp
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             filename = f"{timestamp}_capture_python.jpg"
-            filepath = self.data_dir / filename
+            filepath = self.pictures_dir / filename
             
             # Capture avec PiCamera2
             self.camera.capture_file(str(filepath))
@@ -115,16 +122,16 @@ class PiCamCapture:
     
     def get_stats(self):
         """Retourne les statistiques de capture"""
-        if not self.data_dir.exists():
+        if not self.pictures_dir.exists():
             return {"total_images": 0, "disk_usage": "0 MB"}
         
-        images = list(self.data_dir.glob("picam_*.jpg"))
+        images = list(self.pictures_dir.glob("picam_*.jpg"))
         total_size = sum(img.stat().st_size for img in images)
         
         return {
             "total_images": len(images),
             "disk_usage": f"{total_size / (1024*1024):.1f} MB",
-            "data_directory": str(self.data_dir.absolute())
+            "data_directory": str(self.pictures_dir.absolute())
         }
 
 
@@ -132,11 +139,10 @@ def main():
     print("=" * 50)
     print("Système PiCam - Capture automatique")
     print("=" * 50)
-    
     try:
-        # Créer l'instance de capture
-        picam = PiCamCapture(data_dir="../data", interval=5)
-        
+        # Créer l'instance de capture (utilise repo/pictures par défaut)
+        picam = PiCamCapture(interval=5)
+
         # Afficher les statistiques initiales
         stats = picam.get_stats()
         print(f"Répertoire de sauvegarde: {stats['data_directory']}")
@@ -145,10 +151,10 @@ def main():
         print()
         print("Appuyez sur Ctrl+C pour arrêter la capture")
         print("-" * 50)
-        
+
         # Démarrer la capture
         picam.start_capture_loop()
-        
+
     except Exception as e:
         print(f"Erreur: {e}")
         return 1
