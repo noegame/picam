@@ -4,11 +4,18 @@ calibrate_camera.py
 
 Usage:
   python calibrate_camera.py --images_dir ./calib_images --pattern 9x6 --square_size 0.025 --out camera_calibration.npz
+  python calibrate_camera.py --images_dir "C:\HOME\WORK\raspberrypi\ZOD\picam\data\calibration" --pattern 9x6 --square_size 0.025 --out camera_calibration.npz
 
 - images_dir : dossier contenant les photos du damier (formats jpg/png)
 - pattern : nombre de coins intérieurs du damier "colsxrows" (ex: 9x6 -> 9 colonnes intérieures, 6 lignes intérieures)
 - square_size : taille d'une case en mètres (ou en unités cohérentes) ; ex 0.025 pour 25 mm
 - out : fichier de sortie (.npz) contenant camera_matrix, dist_coeffs, rvecs, tvecs
+
+Description:
+    Calibre une caméra en utilisant des images d'un damier (chessboard) avec OpenCV.
+    Détecte les coins intérieurs du damier dans les images fournies, puis calcule la matrice de la caméra et les coefficients de distorsion.
+    Sauvegarde les résultats dans un fichier .npz.
+
 """
 
 import argparse

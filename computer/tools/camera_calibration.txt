@@ -1,0 +1,16 @@
+Found 8 images, trying to detect chessboard 9x6...
+Calibration RMS error (returned by calibrateCamera): 0.512006870778195
+Reprojection mean error (per-image average): 0.0674809244468286
+Image size (w,h): (1920, 1080)
+Camera matrix:
+ [[1.31709319e+03 0.00000000e+00 9.57671432e+02]
+ [0.00000000e+00 1.31533823e+03 5.65956790e+02]
+ [0.00000000e+00 0.00000000e+00 1.00000000e+00]]
+Distortion coefficients:
+ [-1.46737549e+01  9.28961397e+01 -1.33533340e-03  1.47455466e-04
+  2.79666903e+01 -1.43210162e+01  8.75385354e+01  6.28166502e+01
+  0.00000000e+00  0.00000000e+00  0.00000000e+00  0.00000000e+00
+  0.00000000e+00  0.00000000e+00]
+Used images: 8
+Saved calibration to camera_calibration.npz
+Saved undistorted example to undistorted_example.png

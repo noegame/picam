@@ -1,14 +1,9 @@
 # How to setup the project
 
 ## Sommaire
-- [Description](#description)
 - [Prérequis](#prérequis)
 - [Installation de l'environnement raspberry pi](#installation-de-lenvironnement-raspberry-pi)
-- [Comment Tester la caméra rapidement](#comment-tester-la-caméra-rapidement)
-
-## Description
-- check_camera.sh : Script bash pour vérifier rapidement le fonctionnement de la caméra Raspberry Pi.
-- capture.py : Script Python pour capturer des images à intervalles réguliers et les sauvegarder
+- [Comment tester la caméra rapidement](#comment-tester-la-caméra-rapidement)
 
 ## Prérequis
 
