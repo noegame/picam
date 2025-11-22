@@ -16,11 +16,11 @@
 1. Télécharger Raspberry PI Imager et flasher une carte SD avec Raspberry Pi OS (32-bit) Lite.
 2. Insérer la carte SD dans le Raspberry Pi, connecter un clavier, une souris et un écran, puis démarrer le Raspberry Pi.
 3. Connecter le Raspberry Pi à Internet et mettre à jour le système :
-```
+``` shell
 sudo apt update && sudo apt upgrade -y && sudo reboot
 ```
 3. Configurer la connexion SSH. Nous allons autoriser temporairement l'authentification par mot de passe afin de copier la clé publique SSH.
-``` bash 
+``` shell 
 sudo nano /etc/ssh/sshd_config
 ```
 Modifier les lignes suivantes :
@@ -32,13 +32,14 @@ Puis redémarrer le service SSH :
 ``` shell 
 sudo systemctl restart ssh
 ```
-4. Créer une paire de clés SSH sur votre ordinateur depuis powershell :
+4. Aller dans C:\Users\<VotreNomUtilisateur>\.ssh
+Créer une paire de clés SSH (si vous n'en avez pas déjà une) :
 ``` powershell
 ssh-keygen 
 ```
-5. Copier la clé publique sur le Raspberry Pi depuis powershell :
-``` powershell
-type $env:USERPROFILE\.ssh\raspberrypi_robot.pub | ssh pi@192.168.68.100 "mkdir -p ~/.ssh && chmod 700 ~/.ssh && cat >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys"
+5. Copier la clé publique sur le Raspberry Pi :
+``` shell
+sudo nano .ssh/authorized_keys
 ```
 6. Repasser en mode sécurisé
 ``` shell
@@ -56,11 +57,14 @@ sudo systemctl restart ssh
 
 **Pour se connecter à la raspberry pi:**
 ``` powershell
-ssh -i $env:USERPROFILE\.ssh\raspberrypi_robot roboteseo@192.168.68.100
+ssh roboteseo@raspberrypi-robot.local
 ```
+Vous pouvez remplacer au besoin "raspberrypi-robot.local" par l'adresse IP de votre Raspberry Pi ou le nom d'hôte que vous avez configuré ainsi que "roboteseo" par le nom d'utilisateur que vous avez choisi. 
 
 7. Installer les dépendances nécessaires pour le projet
 ``` shell
+sudo mkdir dev
+cd dev
 sudo apt install git
 git clone https://github.com/noegame/picam
 cd picam/setup/

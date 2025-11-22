@@ -2,24 +2,27 @@
 
 ## Sommaire
 - [Se connecter en SSH](#se-connecter-en-ssh)
+- [Utiliser SSH Tunnel dans VSCode](#utiliser-ssh-tunnel-dans-vscode)
 
 ## Se connecter en SSH
 
-### Comment trouver l'adresse IP de la Raspberry Pi
-to do
-
-### Comment se connecter en SSH
-
-La connexion SSH permet de se connecter à distance à la Raspberry Pi depuis un autre ordinateur. La commande pour se connecter est la suivante :
+1. Allumer la Raspberry Pi et la connecter au réseau local (via Ethernet ou Wi-Fi).
+2. Depuis un autre ordinateur sur le même réseau, ouvrir un terminal ou une invite de commande.
 ``` powershell
-ssh -i $env:USERPROFILE\.ssh\rapsberry_pi_name user_name@ip_address
+ssh roboteseo@raspberrypi-robot.local
 ```
-Remplacer :
-- `rapsberry_pi_name` par le nom de la clé privée SSH que vous avez créée lors de la configuration initiale (par exemple : `raspberrypi_robot`).
-- `user_name` par le nom d'utilisateur sur la Raspberry Pi (par exemple : `roboteseo`).
-- `ip_address` par l'adresse IP de la Raspberry Pi (par exemple : `192.168.68.100`).
 
-Exemple complet :
-``` powershell
-ssh -i $env:USERPROFILE\.ssh\raspberrypi_robot roboteseo@192.168.68.100
+## Utiliser SSH Tunnel dans VSCode
+
+Pour éditer des fichiers directement sur la Raspberry Pi depuis Visual Studio Code, vous pouvez utiliser l'extension "Remote - SSH".
+
+1. Installer l'extension "Remote - SSH" dans VSCode.
+2. Ouvrir la palette de commandes (Ctrl+Shift+P) et sélectionner "Remote-SSH: Connect to Host...".
+3. Ajouter une nouvelle configuration SSH avec l'adresse de la Raspberry Pi :
 ```
+ssh roboteseo@raspberrypi-robot.local
+```
+4. Se connecter à la Raspberry Pi en sélectionnant l'hôte ajouté.
+5. Une fois connecté, ouvrir le dossier de travail sur la Raspberry Pi via "File > Open Folder...".
+
+Remarque : Vous pouvez remplacer au besoin "raspberrypi-robot.local" par l'adresse IP de votre Raspberry Pi ou le nom d'hôte que vous avez configuré ainsi que "roboteseo" par le nom d'utilisateur que vous avez choisi.
