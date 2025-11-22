@@ -6,22 +6,21 @@ Fonctionnalités :
  - détecte les tags ArUco (API ancienne ou nouvelle)
  - print id, centre (x,y) en px et angle (deg)
  - sauvegarde une image annotée
- - option --show pour afficher la fenêtre (utile sous Windows)
-
- Usage exemple :
- Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
-  .\.venv\Scripts\Activate.ps1
-  python .\detect_aruco.py "C:\HOME\WORK\raspberrypi\ZOD\picam\data\data_qr\aruco tel balise 1.jpg" --outdir "C:\HOME\WORK\raspberrypi\ZOD\picam\output" --dict DICT_4X4_50 --show
-
+ - optionnellement affiche l'image annotée à l'écran
 """
 
 import cv2
 import numpy as np
 import math
-import argparse
 import sys
 import json
 from pathlib import Path
+
+INPUT_FOLDER_PATH = r"C:\HOME\WORK\picam\data\terrain papier"
+OUTPUT_FOLDER_PATH = r"C:\HOME\WORK\picam\output"
+JSON_PATH = "aruco.json"
+DICT_NAME = "DICT_4X4_50"
+SHOW = False
 
 def get_aruco_dict(dict_name='DICT_4X4_50'):
     """
@@ -91,7 +90,7 @@ def create_detector_and_params(aruco_dict):
     # ancienne API
     return None, aruco_params
 
-def load_aruco_descriptions(json_path='aruco.json'):
+def load_aruco_descriptions(json_path=JSON_PATH):
     """
     Charge les descriptions des tags ArUco depuis un fichier JSON.
     Returns:
@@ -167,7 +166,7 @@ def detect_in_image(img, aruco_dict, detector, aruco_params, draw=True, aruco_de
 
     return results, img
 
-def process_path(input_path_str, out_dir, dict_name='DICT_4X4_50', show=False):
+def process_path(input_path_str, out_dir, dict_name=DICT_NAME, show=SHOW):
     """
     Traite un fichier image ou un dossier d'images: détecte les tags ArUco, annote
     les images et sauvegarde les images annotées.
@@ -234,29 +233,15 @@ def process_path(input_path_str, out_dir, dict_name='DICT_4X4_50', show=False):
         if show:
             # Affiche la fenêtre (fermer avec une touche)
             winname = f"Annotated - {f.name}"
-            cv2.imshow(winname, annotated)
+            resized = cv2.resize(annotated, (1280, 720))
+            cv2.imshow(winname, resized)
             print("  Appuie sur une touche dans la fenêtre d'image pour continuer...")
             cv2.waitKey(0)
             cv2.destroyWindow(winname)
 
 def main():
-    """
-    Point d'entrée CLI du script. Analyse les arguments et lance le traitement.
-    Options prises en charge:
-        - input: fichier image ou dossier d'images
-        - --outdir: dossier de sortie
-        - --dict: dictionnaire ArUco à utiliser
-        - --show: afficher les images annotées
-    """
-    parser = argparse.ArgumentParser(description="Detect ArUco tags and save annotated images (Windows compatible).")
-    parser.add_argument("input", help="fichier image ou dossier d'images")
-    parser.add_argument("--outdir", help="dossier de sortie pour images annotées", default="out_annotated")
-    parser.add_argument("--dict", help="nom dictionnaire ArUco (ex: DICT_4X4_50)", default="DICT_4X4_50")
-    parser.add_argument("--show", help="afficher chaque image annotée (fermer fenêtre pour passer à la suivante)", action="store_true")
-    args = parser.parse_args()
-
     try:
-        process_path(args.input, args.outdir, dict_name=args.dict, show=args.show)
+        process_path(INPUT_FOLDER_PATH, OUTPUT_FOLDER_PATH, dict_name=DICT_NAME, show=SHOW)
     except Exception as e:
         print("Erreur:", e)
         sys.exit(1)
