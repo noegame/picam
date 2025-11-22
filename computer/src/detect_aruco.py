@@ -14,10 +14,11 @@ import numpy as np
 import math
 import sys
 import json
+import tkinter as tk
+from tkinter import filedialog
 from pathlib import Path
 
-INPUT_FOLDER_PATH = r"C:\HOME\WORK\picam\data\terrain papier"
-OUTPUT_FOLDER_PATH = r"C:\HOME\WORK\picam\output"
+# paramètres par défaut
 JSON_PATH = "aruco.json"
 DICT_NAME = "DICT_4X4_50"
 SHOW = False
@@ -240,8 +241,20 @@ def process_path(input_path_str, out_dir, dict_name=DICT_NAME, show=SHOW):
             cv2.destroyWindow(winname)
 
 def main():
+
+    root = tk.Tk()
+    root.withdraw()
+
+    input_folder_path = filedialog.askdirectory(
+        title="Select a folder",
+        initialdir=r"data",
+    )
+
+    output_folder_path = "output\\aruco_detected"
+
+
     try:
-        process_path(INPUT_FOLDER_PATH, OUTPUT_FOLDER_PATH, dict_name=DICT_NAME, show=SHOW)
+        process_path(input_folder_path, output_folder_path, dict_name=DICT_NAME, show=SHOW)
     except Exception as e:
         print("Erreur:", e)
         sys.exit(1)
