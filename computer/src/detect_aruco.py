@@ -17,11 +17,13 @@ import json
 import tkinter as tk
 from tkinter import filedialog
 from pathlib import Path
+from my_math import Point
 
 # paramètres par défaut
 JSON_PATH = "aruco.json"
 DICT_NAME = "DICT_4X4_50"
 SHOW = False
+
 
 def get_aruco_dict(dict_name='DICT_4X4_50'):
     """
@@ -240,24 +242,44 @@ def process_path(input_path_str, out_dir, dict_name=DICT_NAME, show=SHOW):
             cv2.waitKey(0)
             cv2.destroyWindow(winname)
 
-def main():
+def detect_aruco(image_path, dict_name=DICT_NAME):
+    """
+    Détecte les tags ArUco dans une image et retourne une liste de Point.
+    
+    Args:
+        image_path (str): chemin vers l'image à traiter
+        dict_name (str): nom du dictionnaire ArUco (par défaut 'DICT_4X4_50')
+    
+    Returns:
+        list: liste de Point(x, y, ID) avec les coordonnées en pixels des tags détectés
+    """
+    # Charge l'image
+    img = cv2.imread(image_path)
+    if img is None:
+        raise RuntimeError(f"Impossible de lire l'image: {image_path}")
+    
+    # Initialise le détecteur
+    aruco_dict = get_aruco_dict(dict_name)
+    detector, aruco_params = create_detector_and_params(aruco_dict)
+    descriptions = load_aruco_descriptions()
+    
+    # Détecte les tags
+    results, annotated = detect_in_image(img, aruco_dict, detector, aruco_params, draw=True, aruco_descriptions=descriptions)
+    
+    # Convertit les résultats en liste de Point
+    points = []
+    for result in results:
+        point = Point(
+            x=result['center_x'],
+            y=result['center_y'],
+            ID=result['id'],
+            angle=result['angle_deg']
+        )
+        points.append(point)
+    
+    # if results:
+    #         for d in results:
+    #             print(f"{f.name} -> Tag ID={d['id']} | x={d['center_x']:.1f} px y={d['center_y']:.1f} px angle={d['angle_deg']:.1f}°")
 
-    root = tk.Tk()
-    root.withdraw()
+    return points
 
-    input_folder_path = filedialog.askdirectory(
-        title="Select a folder",
-        initialdir=r"data",
-    )
-
-    output_folder_path = "output\\aruco_detected"
-
-
-    try:
-        process_path(input_folder_path, output_folder_path, dict_name=DICT_NAME, show=SHOW)
-    except Exception as e:
-        print("Erreur:", e)
-        sys.exit(1)
-
-if __name__ == "__main__":
-    main()

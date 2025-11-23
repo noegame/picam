@@ -2,3 +2,7 @@ data/
 output/
 .venv/
 note.txt
+pictures/
+*.log
+*code-workspace
+*__pycache__/
