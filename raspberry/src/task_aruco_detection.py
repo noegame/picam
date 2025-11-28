@@ -15,8 +15,16 @@ from multiprocessing import Queue
 from logging import Logger
 from picamera2 import Picamera2
 
+# ---------------------------------------------------------------------------
+# Constantes globales
+# ---------------------------------------------------------------------------
+
 # Variable globale pour la caméra (singleton)
 camera = None
+
+# ---------------------------------------------------------------------------
+# Fonctions principales
+# ---------------------------------------------------------------------------
 
 def initialize_camera():
     """Initialise la caméra PiCamera2"""
@@ -66,7 +74,7 @@ def task_aruco_detection(queue: Queue, logger: Logger):
         # parents[2] -> .../picam/raspberry
         # parents[3] -> .../picam
         repo_root = Path(__file__).resolve().parents[3]
-        pictures_dir = repo_root / "output" / "main"
+        pictures_dir = repo_root / "output" / "camera"
         
         logger.info("Démarrage de la tâche de détection ArUco (capture de photos)")
         logger.info(f"Répertoire de sauvegarde: {pictures_dir}")

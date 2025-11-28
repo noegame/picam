@@ -12,6 +12,11 @@ from task_aruco_detection import task_aruco_detection
 from task_communication import task_communication
 from task_stream import task_stream
 
+# ---------------------------------------------------------------------------
+# Fonctions principales
+# ---------------------------------------------------------------------------
+
+
 def run_task(core_id, func, queue, logger):
     """Exécute une tâche sur un cœur spécifique"""
     # Assignation du processus à un cœur spécifique
