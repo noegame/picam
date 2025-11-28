@@ -73,7 +73,7 @@ def task_aruco_detection(queue: Queue, logger: Logger):
         # __file__ -> .../picam/raspberry/src/task_aruco_detection.py
         # parents[2] -> .../picam/raspberry
         # parents[3] -> .../picam
-        repo_root = Path(__file__).resolve().parents[3]
+        repo_root = Path(__file__).resolve().parents[2]
         pictures_dir = repo_root / "output" / "camera"
         
         logger.info("Démarrage de la tâche de détection ArUco (capture de photos)")

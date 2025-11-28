@@ -7,6 +7,7 @@
 import os
 import logging
 import logging.config
+from pathlib import Path
 from multiprocessing import Process, Queue
 from task_aruco_detection import task_aruco_detection
 from task_communication import task_communication
@@ -29,8 +30,9 @@ def run_task(core_id, func, queue, logger):
     func(queue, logger)
 
 def main():
-    # Configuration du logging
-    logging.config.fileConfig('logging.conf')
+    # Configuration du logging avec chemin absolu
+    logging_conf_path = Path(__file__).parent / 'logging.conf'
+    logging.config.fileConfig(str(logging_conf_path))
     logger = logging.getLogger('aruco_detection_flow')
     queue = Queue()
 
