@@ -19,13 +19,10 @@ sudo apt install -y libcamera-apps
 sudo apt install -y python3 
 sudo apt install -y python3-pip 
 sudo apt install -y python3-picamera2
-#sudo apt install -y python3-opencv
+sudo apt install -y python3-opencv
 
 # === Configuration du Wi-Fi ===
 sudo bash ./setup_wifi.sh
-
-# === Configuration IP statique ===
-sudo bash ./set_static_ip.sh
 
 # Redémarrage de la Raspberry Pi
 echo "Un redémarrage est recommandé : sudo reboot"
