@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 
 """
 test_aruco_detection_flow.py
@@ -13,6 +12,10 @@ test_aruco_detection_flow.py
 repère de coordonnées du monde réel (en mm)
 repère de coordonnées de l'image (en pixels)
 """
+
+# ---------------------------------------------------------------------------
+# Imports
+# ---------------------------------------------------------------------------
 
 import cv2
 import numpy as np
@@ -30,6 +33,11 @@ A1 = Point(600, 600, 20)
 B1 = Point(1400, 600, 22)
 C1 = Point(600, 2400, 21)
 D1 = Point(1400, 2400, 23)
+
+# A1 = Point(53, 53, 20)      #SO
+# B1 = Point(123, 53, 22)     #SE
+# C1 = Point(53, 213, 21)     #NO
+# D1 = Point(123, 213, 23)    #NE
 
 FIXED_IDS = {20, 21, 22, 23}
 
@@ -70,16 +78,18 @@ def show_image(image : np.ndarray):
     cv2.destroyAllWindows()
 
 def main():
-    # Importer une image 
+
+    # ========= Importation de l'image ==========
+
     input_image_path = import_image()
     if not input_image_path:
-        print("Aucune image sélectionnée. Fin du programme.")
+        print("\nAucune image sélectionnée. Fin du programme.")
         return
 
     # Coordonnées des TAGS ARUCO fixes et mobiles détectés dans l'image (en pixels)
     tag_picture = detect_aruco(input_image_path)
 
-    # Récupère les 4 points fixes détectés (IDs 20, 21, 22, 23)
+    # Récupère les coordonnées des 4 points fixes détectés dans l'image
     A2 = find_point_by_id(tag_picture, 20)
     B2 = find_point_by_id(tag_picture, 22)
     C2 = find_point_by_id(tag_picture, 21)
@@ -102,12 +112,11 @@ def main():
     # Calcul de la transformation affine entre les deux ensembles de points 
     src_points = np.array([[A2.x, A2.y], [B2.x, B2.y], [C2.x, C2.y], [D2.x, D2.y]], dtype=np.float32)
     dst_points = np.array([[A1.x, A1.y], [B1.x, B1.y], [C1.x, C1.y], [D1.x, D1.y]], dtype=np.float32)
+    # Matrice de transformation affine
     matrix = cv2.getPerspectiveTransform(src_points, dst_points)
-    print("Matrice de transformation affine :")
-    
+
     # Applique la transformation à l'image entière
     img = cv2.imread(input_image_path)
-    h, w = img.shape[:2]
     transformed_img = cv2.warpPerspective(img, matrix, (600, 600))
  
     # ========= Estimation des positions des tags mobiles ==========
@@ -137,7 +146,7 @@ def main():
         dst_pt = cv2.perspectiveTransform(np.array([src_pt]), matrix)
         x_real, y_real = int(dst_pt[0][0][0]), int(dst_pt[0][0][1])
         cv2.circle(annotated_img, (int(mp.x), int(mp.y)), 5, (0, 0, 255), -1)
-        cv2.putText(annotated_img, f"ID:{mp.ID} ({x_real:.1f}, {y_real:.1f})", (int(mp.x) + 10, int(mp.y) - 10),
+        cv2.putText(annotated_img, f"ID:{mp.ID} ({x_real:.2f}, {y_real:.2f})", (int(mp.x) + 10, int(mp.y) - 10),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 0, 0), 1)
 
     # ========== Sauvegarde de l'image annotée ==========
