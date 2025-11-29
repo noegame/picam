@@ -21,14 +21,6 @@ from camera_functions import initialize_camera, capture_and_save_image
 from detect_aruco import preprocess_image
 
 # ---------------------------------------------------------------------------
-# Configuration du logging
-# ---------------------------------------------------------------------------
-
-logging_conf_path = Path(__file__).parent / 'logging.conf'
-logging.config.fileConfig(str(logging_conf_path))
-logger = logging.getLogger('task_aruco_detection')
-
-# ---------------------------------------------------------------------------
 # Fonctions
 # ---------------------------------------------------------------------------
 
@@ -62,7 +54,7 @@ def task_aruco_detection(queue: Queue, logger: Logger):
                 logger.info(f"Image capturée: {filepath.name}")
 
                 # Pré-traitement de l'image
-                img_distorted = preprocess_image(filepath, camera_matrix, dist_coeffs)
+                img_distorted = preprocess_image(str(filepath), camera_matrix, dist_coeffs)
                 
                 # Enregistrement de l'image détordue
                 processed_filepath = pictures_dir / f"processed_{filepath.name}"
