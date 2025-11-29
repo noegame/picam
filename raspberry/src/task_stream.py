@@ -11,6 +11,7 @@ import logging
 import threading
 from multiprocessing import Queue
 from logging import Logger
+from pathlib import Path
 from flask import Flask, Response, jsonify, render_template
 
 # ---------------------------------------------------------------------------
@@ -37,6 +38,7 @@ def update_data_from_queue(queue: Queue, logger: Logger):
     """Récupère les données de la queue, lit les images et met à jour les variables globales."""
     global image_data, aruco_tags_data
     
+    repo_root = Path(__file__).resolve().parents[2]
     data = queue.get()
     
     with data_lock:
@@ -46,12 +48,13 @@ def update_data_from_queue(queue: Queue, logger: Logger):
         # Lit et met à jour chaque image
         for key in image_data.keys():
             try:
-                with open(data[key], 'rb') as f:
+                absolute_path = repo_root / data[key]
+                with open(absolute_path, 'rb') as f:
                     image_data[key] = f.read()
             except FileNotFoundError:
-                logger.warning(f"Fichier image non trouvé: {data[key]}")
+                logger.warning(f"Fichier image non trouvé: {repo_root / data[key]}")
             except Exception as e:
-                logger.error(f"Erreur lors de la lecture du fichier image {data[key]}: {e}")
+                logger.error(f"Erreur lors de la lecture du fichier image {repo_root / data[key]}: {e}")
 
 def data_reader_thread(queue: Queue, logger: Logger):
     """Thread qui lit continuellement les données de la queue."""

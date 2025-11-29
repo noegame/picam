@@ -105,9 +105,9 @@ def task_aruco_detection(queue: Queue, logger: Logger):
 
                 # Envoyer les données à la queue pour le streaming
                 data_for_queue = {
-                    "original_img": str(filepath),
-                    "undistorted_img": str(filepath),
-                    "warped_img": str(filepath),
+                    "original_img": str(filepath.relative_to(repo_root)),
+                    "undistorted_img": str(filepath.relative_to(repo_root)),
+                    "warped_img": str(filepath.relative_to(repo_root)),
                     "aruco_tags": [{"id": p.ID, "x": p.x, "y": p.y} for p in tag_picture]
                 }
                 queue.put(data_for_queue)
@@ -137,9 +137,9 @@ def task_aruco_detection(queue: Queue, logger: Logger):
                 
                 # Envoyer les données à la queue pour le streaming
                 data_for_queue = {
-                    "original_img": str(filepath),
-                    "undistorted_img": str(undistorted_filepath),
-                    "warped_img": str(warped_filepath),
+                    "original_img": str(filepath.relative_to(repo_root)),
+                    "undistorted_img": str(undistorted_filepath.relative_to(repo_root)),
+                    "warped_img": str(warped_filepath.relative_to(repo_root)),
                     "aruco_tags": [{"id": p.ID, "x": p.x, "y": p.y} for p in tag_picture]
                 }
                 queue.put(data_for_queue)          
