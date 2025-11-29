@@ -99,28 +99,28 @@ def task_aruco_detection(queue: Queue, logger: Logger):
                     print(f"Tags manquants: {', '.join(missing)}")
                     print(f"Tags trouvés: {', '.join([str(p.ID) for p in tag_picture])}")
                     continue
+            else :
+                # Calcul de la transformation affine entre les deux ensembles de points 
+                src_points = np.array([[A2.x, A2.y], [B2.x, B2.y], [C2.x, C2.y], [D2.x, D2.y]], dtype=np.float32)
+                dst_points = np.array([[A1.x, A1.y], [B1.x, B1.y], [C1.x, C1.y], [D1.x, D1.y]], dtype=np.float32)
+                # Matrice de transformation affine
+                matrix = cv2.getPerspectiveTransform(src_points, dst_points)
 
-            # Calcul de la transformation affine entre les deux ensembles de points 
-            src_points = np.array([[A2.x, A2.y], [B2.x, B2.y], [C2.x, C2.y], [D2.x, D2.y]], dtype=np.float32)
-            dst_points = np.array([[A1.x, A1.y], [B1.x, B1.y], [C1.x, C1.y], [D1.x, D1.y]], dtype=np.float32)
-            # Matrice de transformation affine
-            matrix = cv2.getPerspectiveTransform(src_points, dst_points)
+                # Applique la transformation à l'image entière
+                transformed_img = cv2.warpPerspective(img_distorted, matrix, (600, 600)) # POURQUOI 600,600 ???
 
-            # Applique la transformation à l'image entière
-            transformed_img = cv2.warpPerspective(img_distorted, matrix, (600, 600)) # POURQUOI 600,600 ???
+                # =============================================
 
-            # =============================================
-
-            # Enregistrement de l'image détordue
-            processed_filepath = processed_pictures_dir / f"processed_{filepath.name}"
-            cv2.imwrite(str(processed_filepath), transformed_img)
-            logger.info(f"Image prétraitée enregistrée: {processed_filepath.name}")
-            
-            # Envoyer le chemin du fichier de l'image détordue à la queue pour le streaming
-            queue.put(str(processed_filepath))          
-            
-            # Petite pause entre les captures (environ 40ms pour ~25 FPS)
-            # time.sleep(0.01)
+                # Enregistrement de l'image détordue
+                processed_filepath = processed_pictures_dir / f"processed_{filepath.name}"
+                cv2.imwrite(str(processed_filepath), transformed_img)
+                logger.info(f"Image prétraitée enregistrée: {processed_filepath.name}")
+                
+                # Envoyer le chemin du fichier de l'image détordue à la queue pour le streaming
+                queue.put(str(processed_filepath))          
+                
+                # Petite pause entre les captures (environ 40ms pour ~25 FPS)
+                # time.sleep(0.01)
             
     except Exception as e:
         logger.error(f"Erreur fatale dans la tâche ArUco: {e}")
