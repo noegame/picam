@@ -52,7 +52,8 @@ def task_aruco_detection(queue: Queue, logger: Logger):
     try:
         repo_root = Path(__file__).resolve().parents[2]
         camera_pictures_dir = repo_root / "output" / "camera"
-        processed_pictures_dir = repo_root / "output" / "processed_img"
+        undistorted_pictures_dir = repo_root / "output" / "undistorted"
+        warped_pictures_dir = repo_root / "output" / "warped"
         
         logger.info("Démarrage de la tâche de détection ArUco (capture de photos)")
         logger.info(f"Répertoire de sauvegarde: {camera_pictures_dir}")
@@ -116,13 +117,23 @@ def task_aruco_detection(queue: Queue, logger: Logger):
 
                 # =============================================
 
-                # Enregistrement de l'image détordue
-                processed_filepath = processed_pictures_dir / f"processed_{filepath.name}"
-                cv2.imwrite(str(processed_filepath), transformed_img)
-                logger.info(f"Image prétraitée enregistrée: {processed_filepath.name}")
+                # Enregistrement des images
+                undistorted_filepath = undistorted_pictures_dir / f"undistorted_{filepath.name}"
+                cv2.imwrite(str(undistorted_filepath), img_distorted)
+                logger.info(f"Image détordue enregistrée: {undistorted_filepath.name}")
+
+                warped_filepath = warped_pictures_dir / f"warped_{filepath.name}"
+                cv2.imwrite(str(warped_filepath), transformed_img)
+                logger.info(f"Image redressée enregistrée: {warped_filepath.name}")
                 
-                # Envoyer le chemin du fichier de l'image détordue à la queue pour le streaming
-                queue.put(str(processed_filepath))          
+                # Envoyer les données à la queue pour le streaming
+                data_for_queue = {
+                    "original_img": str(filepath),
+                    "undistorted_img": str(undistorted_filepath),
+                    "warped_img": str(warped_filepath),
+                    "aruco_tags": [{"id": p.id, "x": p.x, "y": p.y} for p in tag_picture]
+                }
+                queue.put(data_for_queue)          
                 
                 # Petite pause entre les captures (environ 40ms pour ~25 FPS)
                 # time.sleep(0.01)
