@@ -12,11 +12,21 @@ import time
 import os
 import numpy as np
 import cv2
+import logging
+import logging.config
 from pathlib import Path
 from multiprocessing import Queue
 from logging import Logger
 from camera_functions import initialize_camera, capture_and_save_image
 from detect_aruco import preprocess_image
+
+# ---------------------------------------------------------------------------
+# Configuration du logging
+# ---------------------------------------------------------------------------
+
+logging_conf_path = Path(__file__).parent / 'logging.conf'
+logging.config.fileConfig(str(logging_conf_path))
+logger = logging.getLogger('task_aruco_detection')
 
 # ---------------------------------------------------------------------------
 # Fonctions
