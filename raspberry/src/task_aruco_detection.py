@@ -98,7 +98,7 @@ def task_aruco_detection(queue: Queue, logger: Logger):
                     if not D2: missing.append("23")
                     print(f"Tags manquants: {', '.join(missing)}")
                     print(f"Tags trouvés: {', '.join([str(p.ID) for p in tag_picture])}")
-                    continue
+
             else :
                 # Calcul de la transformation affine entre les deux ensembles de points 
                 src_points = np.array([[A2.x, A2.y], [B2.x, B2.y], [C2.x, C2.y], [D2.x, D2.y]], dtype=np.float32)

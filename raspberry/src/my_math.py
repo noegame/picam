@@ -25,7 +25,7 @@ def distance(p1: Point, p2: Point) -> float:
     """Calcule la distance euclidienne entre deux points"""
     return math.sqrt((p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2)
 
-def find_point_by_id(points: list[Point], target_id: int) -> Point:
+def find_point_by_id(points: list[Point], target_id: int):
     """
     Trouve un point par son ID dans une liste de points.
 
@@ -39,7 +39,7 @@ def find_point_by_id(points: list[Point], target_id: int) -> Point:
     for p in points:
         if p.ID == target_id:
             return p
-    raise ValueError(f"Aucun point trouvé avec l'ID {target_id}")
+    return None
 
 def print_points(points : list) -> None:
     """Affiche une liste de points"""
