@@ -10,6 +10,7 @@ Fonctions liées à la caméra
 from datetime import datetime
 from pathlib import Path
 from picamera2 import Picamera2
+import numpy as np
 
 # ---------------------------------------------------------------------------
 # Constantes globales
@@ -36,7 +37,7 @@ def initialize_camera():
         except Exception as e:
             raise Exception(f"Erreur lors de l'initialisation de la caméra: {e}")
 
-def capture_image(pictures_dir: Path) -> (np.ndarray, Path):
+def capture_image(pictures_dir: Path) -> tuple[np.ndarray, Path]:
     """Capture une image, la sauvegarde et la retourne en tant que np.ndarray"""
     global camera
     
