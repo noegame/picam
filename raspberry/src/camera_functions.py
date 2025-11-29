@@ -11,6 +11,7 @@ from datetime import datetime
 from pathlib import Path
 from picamera2 import Picamera2
 import numpy as np
+import cv2
 
 # ---------------------------------------------------------------------------
 # Constantes globales
@@ -55,6 +56,7 @@ def capture_image(pictures_dir: Path) -> tuple[np.ndarray, Path]:
         
         # Capturer l'image en mémoire (array) et la sauvegarder
         image_array = camera.capture_array()
+        image_array = cv2.cvtColor(image_array, cv2.COLOR_BGR2RGB)
         camera.capture_file(str(filepath)) # On la sauvegarde pour le debug
         
         return image_array, filepath

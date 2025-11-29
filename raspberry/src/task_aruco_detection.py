@@ -51,6 +51,7 @@ def task_aruco_detection(queue: Queue):
     """
     logger = logging.getLogger('task_aruco_detection')
     try:
+        script_dir = os.path.dirname(os.path.abspath(__file__))
         repo_root = Path(__file__).resolve().parents[2]
         camera_pictures_dir = repo_root / "output" / "camera"
         undistorted_pictures_dir = repo_root / "output" / "undistorted"
@@ -64,9 +65,8 @@ def task_aruco_detection(queue: Queue):
         logger.info("Caméra initialisée avec succès")
         
         # Importation des coefficients de distorsion (calibration)
-        SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-        CALIBRATION_FILE = os.path.join(SCRIPT_DIR, "camera_calibration.npz")
-        data = np.load(CALIBRATION_FILE)
+        calibration_file = os.path.join(script_dir, "camera_calibration.npz")
+        data = np.load(calibration_file)
         camera_matrix = data["camera_matrix"]
         dist_coeffs = data["dist_coeffs"]
 
@@ -85,22 +85,23 @@ def task_aruco_detection(queue: Queue):
             # Pré-traitement de l'image (correction de la distorsion)
             img_distorted = preprocess_image(original_img, camera_matrix, dist_coeffs)
 
-            # Détection des tags ArUco
-            tag_picture = detect_aruco(img_distorted)
+            # Détection des tags ArUco fixes
+            tags_from_img = detect_aruco(img_distorted)
 
             # Récupère les coordonnées des 4 points fixes
-            A2 = find_point_by_id(tag_picture, 20)
-            B2 = find_point_by_id(tag_picture, 22)
-            C2 = find_point_by_id(tag_picture, 21)
-            D2 = find_point_by_id(tag_picture, 23)
+            A2 = find_point_by_id(tags_from_img, 20)
+            B2 = find_point_by_id(tags_from_img, 22)
+            C2 = find_point_by_id(tags_from_img, 21)
+            D2 = find_point_by_id(tags_from_img, 23)
 
+            # Compress img before sending to queue
             _, original_img_bytes = cv2.imencode('.jpg', original_img)
             _, undistorted_img_bytes = cv2.imencode('.jpg', img_distorted)
 
-            aruco_tags_for_queue = [{"id": p.ID, "x": p.x, "y": p.y} for p in tag_picture]
+            aruco_tags_for_queue = [{"id": p.ID, "x": p.x, "y": p.y} for p in tags_from_img]
 
             if not all([A2, B2, C2, D2]):
-                missing = [str(id) for id in [20, 22, 21, 23] if not find_point_by_id(tag_picture, id)]
+                missing = [str(id) for id in [20, 22, 21, 23] if not find_point_by_id(tags_from_img, id)]
                 logger.warning(f"Tags fixes {', '.join(missing)} non trouvé(s)")
 
                 data_for_queue = {
@@ -116,6 +117,8 @@ def task_aruco_detection(queue: Queue):
                 matrix = cv2.getPerspectiveTransform(src_points, dst_points)
                 h, w = img_distorted.shape[:2]
                 transformed_img = cv2.warpPerspective(img_distorted, matrix, (w, h))
+                
+                # Compress img before sending to queue
                 _, warped_img_bytes = cv2.imencode('.jpg', transformed_img)
                 
                 data_for_queue = {
@@ -124,6 +127,8 @@ def task_aruco_detection(queue: Queue):
                     "warped_img": warped_img_bytes.tobytes(),
                     "aruco_tags": aruco_tags_for_queue
                 }
+
+                # TODO : détecter les tags dynamiques et calculer leur position réelle à partir de l'image redressée
             
             queue.put(data_for_queue)          
             
