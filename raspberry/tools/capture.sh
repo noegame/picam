@@ -1,6 +1,5 @@
 #!/bin/bash
 # Prend une photo toutes les 5 secondes et la sauvegarde dans le dossier picam/pictures/
-# TODO : fix
 
 # Configuration
 INTERVAL=5
