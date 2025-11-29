@@ -35,26 +35,19 @@ aruco_tags_data = []
 # ---------------------------------------------------------------------------
 
 def update_data_from_queue(queue: Queue):
-    """Récupère les données de la queue, lit les images et met à jour les variables globales."""
+    """Récupère les données de la queue et met à jour les variables globales."""
     global image_data, aruco_tags_data
     
-    repo_root = Path(__file__).resolve().parents[2]
     data = queue.get()
     
     with data_lock:
         # Met à jour les données des tags ArUco
         aruco_tags_data = data["aruco_tags"]
 
-        # Lit et met à jour chaque image
+        # Met à jour chaque image directement avec les bytes reçus
         for key in image_data.keys():
-            try:
-                absolute_path = repo_root / data[key]
-                with open(absolute_path, 'rb') as f:
-                    image_data[key] = f.read()
-            except FileNotFoundError:
-                logger.warning(f"Fichier image non trouvé: {repo_root / data[key]}")
-            except Exception as e:
-                logger.error(f"Erreur lors de la lecture du fichier image {repo_root / data[key]}: {e}")
+            if key in data:
+                image_data[key] = data[key]
 
 def data_reader_thread(queue: Queue):
     """Thread qui lit continuellement les données de la queue."""

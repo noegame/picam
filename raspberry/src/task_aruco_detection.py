@@ -15,7 +15,7 @@ import cv2
 from pathlib import Path
 from multiprocessing import Queue
 import logging
-from camera_functions import initialize_camera, capture_and_save_image
+from camera_functions import initialize_camera, capture_image
 from detect_aruco import preprocess_image
 from detect_aruco2 import detect_aruco
 from my_math import *
@@ -74,83 +74,60 @@ def task_aruco_detection(queue: Queue):
         while True:
             try:
                 # Capturer une image
-                img_filepath = capture_and_save_image(camera_pictures_dir)
-                logger.info(f"Image capturée: {img_filepath.name}")
+                original_img, original_filepath = capture_image(camera_pictures_dir)
+                logger.info(f"Image capturée: {original_filepath.name}")
 
             except Exception as e:
                 logger.error(f"Erreur lors de la capture: {e}")
+                time.sleep(1) # Eviter de surcharger en cas d'erreur de capture en boucle
+                continue
             
-            # Pré-traitement de l'image
-            img_distorted = preprocess_image(str(img_filepath), camera_matrix, dist_coeffs)
+            # Pré-traitement de l'image (correction de la distorsion)
+            img_distorted = preprocess_image(original_img, camera_matrix, dist_coeffs)
 
-            # =============================================
-
-            # Détection des tags ArUco fixes pour redressement de l'image
-
-            # Coordonnées des TAGS ARUCO fixes et mobiles détectés dans l'image (en pixels)
+            # Détection des tags ArUco
             tag_picture = detect_aruco(img_distorted)
 
-            # Récupère les coordonnées des 4 points fixes détectés dans l'image
+            # Récupère les coordonnées des 4 points fixes
             A2 = find_point_by_id(tag_picture, 20)
             B2 = find_point_by_id(tag_picture, 22)
             C2 = find_point_by_id(tag_picture, 21)
             D2 = find_point_by_id(tag_picture, 23)
 
+            _, original_img_bytes = cv2.imencode('.jpg', original_img)
+            _, undistorted_img_bytes = cv2.imencode('.jpg', img_distorted)
+
+            aruco_tags_for_queue = [{"id": p.ID, "x": p.x, "y": p.y} for p in tag_picture]
+
             if not all([A2, B2, C2, D2]):
-                missing = []
-                if not A2: missing.append("20")
-                if not B2: missing.append("22")
-                if not C2: missing.append("21")
-                if not D2: missing.append("23")
+                missing = [str(id) for id in [20, 22, 21, 23] if not find_point_by_id(tag_picture, id)]
                 logger.warning(f"Tags fixes {', '.join(missing)} non trouvé(s)")
 
-                undistorted_filepath = undistorted_pictures_dir / f"undistorted_{img_filepath.name}"
-                cv2.imwrite(str(undistorted_filepath), img_distorted)
-                logger.info(f"Image détordue enregistrée: {undistorted_filepath.name}")
-
-                # Envoyer les données à la queue pour le streaming
                 data_for_queue = {
-                    "original_img": str(img_filepath.relative_to(repo_root)),
-                    "undistorted_img": str(undistorted_filepath.relative_to(repo_root)),
-                    "warped_img": str(img_filepath.relative_to(repo_root)),
-                    "aruco_tags": [{"id": p.ID, "x": p.x, "y": p.y} for p in tag_picture]
+                    "original_img": original_img_bytes.tobytes(),
+                    "undistorted_img": undistorted_img_bytes.tobytes(),
+                    "warped_img": undistorted_img_bytes.tobytes(),  # Fallback: utilise l'image non-distordue
+                    "aruco_tags": aruco_tags_for_queue
                 }
-                queue.put(data_for_queue)
-
-            else :
-                # Calcul de la transformation affine entre les deux ensembles de points 
+            else:
+                # Redressement de l'image
                 src_points = np.array([[A2.x, A2.y], [B2.x, B2.y], [C2.x, C2.y], [D2.x, D2.y]], dtype=np.float32)
                 dst_points = np.array([[A1.x, A1.y], [B1.x, B1.y], [C1.x, C1.y], [D1.x, D1.y]], dtype=np.float32)
-                # Matrice de transformation affine
                 matrix = cv2.getPerspectiveTransform(src_points, dst_points)
-
-                # Récupère la taille de l'image pour la transformation
                 h, w = img_distorted.shape[:2]
-                # Applique la transformation à l'image entière
                 transformed_img = cv2.warpPerspective(img_distorted, matrix, (w, h))
-
-                # =============================================
-
-                # Enregistrement des images
-                undistorted_filepath = undistorted_pictures_dir / f"undistorted_{img_filepath.name}"
-                cv2.imwrite(str(undistorted_filepath), img_distorted)
-                logger.info(f"Image détordue enregistrée: {undistorted_filepath.name}")
-
-                warped_filepath = warped_pictures_dir / f"warped_{img_filepath.name}"
-                cv2.imwrite(str(warped_filepath), transformed_img)
-                logger.info(f"Image redressée enregistrée: {warped_filepath.name}")
+                _, warped_img_bytes = cv2.imencode('.jpg', transformed_img)
                 
-                # Envoyer les données à la queue pour le streaming
                 data_for_queue = {
-                    "original_img": str(img_filepath.relative_to(repo_root)),
-                    "undistorted_img": str(undistorted_filepath.relative_to(repo_root)),
-                    "warped_img": str(warped_filepath.relative_to(repo_root)),
-                    "aruco_tags": [{"id": p.ID, "x": p.x, "y": p.y} for p in tag_picture]
+                    "original_img": original_img_bytes.tobytes(),
+                    "undistorted_img": undistorted_img_bytes.tobytes(),
+                    "warped_img": warped_img_bytes.tobytes(),
+                    "aruco_tags": aruco_tags_for_queue
                 }
-                queue.put(data_for_queue)          
-                
-            # Petite pause entre les captures (environ 40ms pour ~25 FPS)
-            # time.sleep(0.01)
+            
+            queue.put(data_for_queue)          
+            
+            time.sleep(0.04) # Environ 25 FPS
             
     except Exception as e:
         logger.error(f"Erreur fatale dans la tâche ArUco: {e}")

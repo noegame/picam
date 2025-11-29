@@ -36,8 +36,8 @@ def initialize_camera():
         except Exception as e:
             raise Exception(f"Erreur lors de l'initialisation de la caméra: {e}")
 
-def capture_and_save_image(pictures_dir: Path) -> Path:
-    """Capture une image et la sauvegarde"""
+def capture_image(pictures_dir: Path) -> (np.ndarray, Path):
+    """Capture une image, la sauvegarde et la retourne en tant que np.ndarray"""
     global camera
     
     if camera is None:
@@ -48,14 +48,15 @@ def capture_and_save_image(pictures_dir: Path) -> Path:
         pictures_dir.mkdir(parents=True, exist_ok=True)
         
         # Générer le nom de fichier avec timestamp
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]  # avec millisecondes
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
         filename = f"{timestamp}_capture.jpg"
         filepath = pictures_dir / filename
         
-        # Capture avec PiCamera2
-        camera.capture_file(str(filepath))
+        # Capturer l'image en mémoire (array) et la sauvegarder
+        image_array = camera.capture_array()
+        camera.capture_file(str(filepath)) # On la sauvegarde pour le debug
         
-        return filepath
+        return image_array, filepath
         
     except Exception as e:
         raise Exception(f"Erreur lors de la capture: {e}")
