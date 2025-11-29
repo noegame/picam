@@ -74,14 +74,14 @@ def task_aruco_detection(queue: Queue):
         while True:
             try:
                 # Capturer une image
-                filepath = capture_and_save_image(camera_pictures_dir)
-                logger.info(f"Image capturée: {filepath.name}")
+                img_filepath = capture_and_save_image(camera_pictures_dir)
+                logger.info(f"Image capturée: {img_filepath.name}")
 
             except Exception as e:
                 logger.error(f"Erreur lors de la capture: {e}")
             
             # Pré-traitement de l'image
-            img_distorted = preprocess_image(str(filepath), camera_matrix, dist_coeffs)
+            img_distorted = preprocess_image(str(img_filepath), camera_matrix, dist_coeffs)
 
             # =============================================
 
@@ -104,11 +104,15 @@ def task_aruco_detection(queue: Queue):
                 if not D2: missing.append("23")
                 logger.warning(f"Tags fixes {', '.join(missing)} non trouvé(s)")
 
+                undistorted_filepath = undistorted_pictures_dir / f"undistorted_{img_filepath.name}"
+                cv2.imwrite(str(undistorted_filepath), img_distorted)
+                logger.info(f"Image détordue enregistrée: {undistorted_filepath.name}")
+
                 # Envoyer les données à la queue pour le streaming
                 data_for_queue = {
-                    "original_img": str(filepath.relative_to(repo_root)),
-                    "undistorted_img": str(filepath.relative_to(repo_root)),
-                    "warped_img": str(filepath.relative_to(repo_root)),
+                    "original_img": str(img_filepath.relative_to(repo_root)),
+                    "undistorted_img": str(undistorted_filepath.relative_to(repo_root)),
+                    "warped_img": str(img_filepath.relative_to(repo_root)),
                     "aruco_tags": [{"id": p.ID, "x": p.x, "y": p.y} for p in tag_picture]
                 }
                 queue.put(data_for_queue)
@@ -128,17 +132,17 @@ def task_aruco_detection(queue: Queue):
                 # =============================================
 
                 # Enregistrement des images
-                undistorted_filepath = undistorted_pictures_dir / f"undistorted_{filepath.name}"
+                undistorted_filepath = undistorted_pictures_dir / f"undistorted_{img_filepath.name}"
                 cv2.imwrite(str(undistorted_filepath), img_distorted)
                 logger.info(f"Image détordue enregistrée: {undistorted_filepath.name}")
 
-                warped_filepath = warped_pictures_dir / f"warped_{filepath.name}"
+                warped_filepath = warped_pictures_dir / f"warped_{img_filepath.name}"
                 cv2.imwrite(str(warped_filepath), transformed_img)
                 logger.info(f"Image redressée enregistrée: {warped_filepath.name}")
                 
                 # Envoyer les données à la queue pour le streaming
                 data_for_queue = {
-                    "original_img": str(filepath.relative_to(repo_root)),
+                    "original_img": str(img_filepath.relative_to(repo_root)),
                     "undistorted_img": str(undistorted_filepath.relative_to(repo_root)),
                     "warped_img": str(warped_filepath.relative_to(repo_root)),
                     "aruco_tags": [{"id": p.ID, "x": p.x, "y": p.y} for p in tag_picture]
