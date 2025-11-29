@@ -261,7 +261,7 @@ def process_path(input_path_str, out_dir, dict_name=DICT_NAME, show=None):
             cv2.waitKey(0)
             cv2.destroyWindow(winname)
 
-def detect_aruco(image_path, dict_name=DICT_NAME):
+def detect_aruco_from_path(image_path, dict_name=DICT_NAME):
     """
     Détecte les tags ArUco dans une image et retourne une liste de Point.
     
@@ -301,6 +301,40 @@ def detect_aruco(image_path, dict_name=DICT_NAME):
     #             print(f"{f.name} -> Tag ID={d['id']} | x={d['center_x']:.1f} px y={d['center_y']:.1f} px angle={d['angle_deg']:.1f}°")
 
     return points
+
+def detect_aruco(img:np.ndarray, dict_name=DICT_NAME)-> list[Point]:
+    """
+    Détecte les tags ArUco dans une image et retourne une liste de Point.
+    
+    Args:
+        image_path (str): chemin vers l'image à traiter
+        dict_name (str): nom du dictionnaire ArUco (par défaut 'DICT_4X4_50')
+    
+    Returns:
+        list: liste de Point(x, y, ID) avec les coordonnées en pixels des tags détectés
+    """
+
+    # Initialise le détecteur
+    aruco_dict = get_aruco_dict(dict_name)
+    detector, aruco_params = create_detector_and_params(aruco_dict)
+    descriptions = load_aruco_descriptions()
+    
+    # Détecte les tags
+    results, annotated = detect_in_image(img, aruco_dict, detector, aruco_params, draw=True, aruco_descriptions=descriptions)
+    
+    # Convertit les résultats en liste de Point
+    points = []
+    for result in results:
+        point = Point(
+            x=result['center_x'],
+            y=result['center_y'],
+            ID=result['id'],
+            angle=result['angle_deg']
+        )
+        points.append(point)
+    
+    return points
+
 
 def undistort_1(image_path, camera_matrix, dist_coeffs, out_path=None):
     img = cv2.imread(image_path, cv2.IMREAD_COLOR)

@@ -1,8 +1,12 @@
-"""
-
-"""
+# ---------------------------------------------------------------------------
+# Imports
+# ---------------------------------------------------------------------------
 
 import math
+
+# ---------------------------------------------------------------------------
+# Fonctions principales
+# ---------------------------------------------------------------------------
 
 class Point:
     def __init__(self, x, y, ID, angle=None):
@@ -17,18 +21,27 @@ class Point:
     def __print__(self):
         return self.__str__()
 
-def distance(p1: Point, p2: Point):
+def distance(p1: Point, p2: Point) -> float:
     """Calcule la distance euclidienne entre deux points"""
     return math.sqrt((p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2)
 
-def find_point_by_id(points, target_id):
-    """Trouve un point par son ID dans une liste de points"""
+def find_point_by_id(points: list[Point], target_id: int) -> Point:
+    """
+    Trouve un point par son ID dans une liste de points.
+
+    Args:
+        points: La liste des points dans laquelle chercher.
+        target_id: L'ID du point à trouver.
+
+    Returns:
+        Le Point correspondant à l'ID, ou None si aucun point n'est trouvé.
+    """
     for p in points:
         if p.ID == target_id:
             return p
-    return None
+    raise ValueError(f"Aucun point trouvé avec l'ID {target_id}")
 
-def print_points(points : list):
+def print_points(points : list) -> None:
     """Affiche une liste de points"""
     for i in range(len(points)):
         print(f"{i}: {points[i].ID} -> ({points[i].x}, {points[i].y})")
