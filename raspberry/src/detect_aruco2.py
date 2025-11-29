@@ -320,7 +320,8 @@ def detect_aruco(img:np.ndarray, dict_name=DICT_NAME)-> list[Point]:
     descriptions = load_aruco_descriptions()
     
     # Détecte les tags
-    results, annotated = detect_in_image(img, aruco_dict, detector, aruco_params, draw=True, aruco_descriptions=descriptions)
+    # DRAW
+    results, annotated = detect_in_image(img, aruco_dict, detector, aruco_params, draw=False, aruco_descriptions=descriptions)
     
     # Convertit les résultats en liste de Point
     points = []
@@ -334,7 +335,6 @@ def detect_aruco(img:np.ndarray, dict_name=DICT_NAME)-> list[Point]:
         points.append(point)
     
     return points
-
 
 def undistort_1(image_path, camera_matrix, dist_coeffs, out_path=None):
     img = cv2.imread(image_path, cv2.IMREAD_COLOR)

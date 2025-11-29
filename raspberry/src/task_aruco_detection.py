@@ -24,9 +24,6 @@ from my_math import *
 # Constantes globales
 # --------------------------------------------------------------------------- 
 
-IMAGE_SIZE_X = 1920
-IMAGE_SIZE_Y = 1080
-
 # A1 = Point(600, 600, 20)
 # B1 = Point(1400, 600, 22)
 # C1 = Point(600, 2400, 21)
@@ -45,7 +42,12 @@ FIXED_IDS = {20, 21, 22, 23}
 
 def task_aruco_detection(queue: Queue, logger: Logger):
     """
-    Tâche de capture: prend une photo et l'envoie à la queue pour le streaming
+    Tâche de capture: 
+    - prend une photo
+    - corrige la distorsion de la photo
+    - redresse la photo
+    - enregistre la photo annotée
+    - envoi le chemin de la photo à la queue pour le streaming
     """
     try:
         repo_root = Path(__file__).resolve().parents[2]
@@ -107,8 +109,10 @@ def task_aruco_detection(queue: Queue, logger: Logger):
                 # Matrice de transformation affine
                 matrix = cv2.getPerspectiveTransform(src_points, dst_points)
 
+                # Récupère la taille de l'image pour la transformation
+                h, w = img_distorted.shape[:2]
                 # Applique la transformation à l'image entière
-                transformed_img = cv2.warpPerspective(img_distorted, matrix, (IMAGE_SIZE_X, IMAGE_SIZE_Y))
+                transformed_img = cv2.warpPerspective(img_distorted, matrix, (w, h))
 
                 # =============================================
 
