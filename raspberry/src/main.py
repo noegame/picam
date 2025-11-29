@@ -33,7 +33,7 @@ def main():
     # Configuration du logging avec chemin absolu
     logging_conf_path = Path(__file__).parent / 'logging.conf'
     logging.config.fileConfig(str(logging_conf_path))
-    logger = logging.getLogger('aruco_detection_flow')
+    logger = logging.getLogger('main')
     queue = Queue()
 
     # Créer les processus

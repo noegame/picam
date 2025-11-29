@@ -4,3 +4,4 @@ logs/
 *.log
 *code-workspace
 *__pycache__/
+wifi_config.json
