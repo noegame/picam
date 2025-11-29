@@ -6,8 +6,11 @@ Fonctionnalités :
  - détecte les tags ArUco (API ancienne ou nouvelle)
  - print id, centre (x,y) en px et angle (deg)
  - sauvegarde une image annotée
- - optionnellement affiche l'image annotée à l'écran
 """
+
+# ---------------------------------------------------------------------------
+# Imports
+# ---------------------------------------------------------------------------
 
 import cv2
 import numpy as np
@@ -17,12 +20,31 @@ import json
 import tkinter as tk
 from tkinter import filedialog
 from pathlib import Path
-from my_math import Point
+from my_math import *
+
+# ---------------------------------------------------------------------------
+# Constantes globales
+# ---------------------------------------------------------------------------
 
 # paramètres par défaut
 JSON_PATH = "aruco.json"
 DICT_NAME = "DICT_4X4_50"
-SHOW = False
+
+A1 = Point(600, 600, 20)
+B1 = Point(1400, 600, 22)
+C1 = Point(600, 2400, 21)
+D1 = Point(1400, 2400, 23)
+
+# A1 = Point(53, 53, 20)      #SO
+# B1 = Point(123, 53, 22)     #SE
+# C1 = Point(53, 213, 21)     #NO
+# D1 = Point(123, 213, 23)    #NE
+
+FIXED_IDS = {20, 21, 22, 23}
+
+# ---------------------------------------------------------------------------
+# Fonctions
+# ---------------------------------------------------------------------------
 
 
 def get_aruco_dict(dict_name='DICT_4X4_50'):
@@ -169,7 +191,7 @@ def detect_in_image(img, aruco_dict, detector, aruco_params, draw=True, aruco_de
 
     return results, img
 
-def process_path(input_path_str, out_dir, dict_name=DICT_NAME, show=SHOW):
+def process_path(input_path_str, out_dir, dict_name=DICT_NAME, show=None):
     """
     Traite un fichier image ou un dossier d'images: détecte les tags ArUco, annote
     les images et sauvegarde les images annotées.
@@ -283,3 +305,34 @@ def detect_aruco(image_path, dict_name=DICT_NAME):
 
     return points
 
+def preprocess_image(filepath: Path):
+
+    # Récupère les coordonnées des 4 points fixes détectés dans l'image
+    A2 = find_point_by_id(tag_picture, 20)
+    B2 = find_point_by_id(tag_picture, 22)
+    C2 = find_point_by_id(tag_picture, 21)
+    D2 = find_point_by_id(tag_picture, 23)
+
+    # Vérification que tous les points fixes ont été détectés
+    if not all([A2, B2, C2, D2]):
+        print("Erreur: Tous les 4 tags fixes n'ont pas été détectés!")
+        missing = []
+        if not A2: missing.append("20")
+        if not B2: missing.append("22")
+        if not C2: missing.append("21")
+        if not D2: missing.append("23")
+        print(f"Tags manquants: {', '.join(missing)}")
+        print(f"Tags trouvés: {', '.join([str(p.ID) for p in tag_picture])}")
+        return
+
+    # ========= Calcul de la transformation affine ==========
+
+    # Calcul de la transformation affine entre les deux ensembles de points 
+    src_points = np.array([[A2.x, A2.y], [B2.x, B2.y], [C2.x, C2.y], [D2.x, D2.y]], dtype=np.float32)
+    dst_points = np.array([[A1.x, A1.y], [B1.x, B1.y], [C1.x, C1.y], [D1.x, D1.y]], dtype=np.float32)
+    # Matrice de transformation affine
+    matrix = cv2.getPerspectiveTransform(src_points, dst_points)
+
+    # Applique la transformation à l'image entière
+    img = cv2.imread(input_image_path)
+    transformed_img = cv2.warpPerspective(img, matrix, (600, 600))

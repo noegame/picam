@@ -13,56 +13,12 @@ from datetime import datetime
 from pathlib import Path
 from multiprocessing import Queue
 from logging import Logger
-from picamera2 import Picamera2
+from camera_functions import initialize_camera, capture_and_save_image
+from detect_aruco import detect_aruco
 
 # ---------------------------------------------------------------------------
-# Constantes globales
+# Fonctions
 # ---------------------------------------------------------------------------
-
-# Variable globale pour la caméra (singleton)
-camera = None
-
-# ---------------------------------------------------------------------------
-# Fonctions principales
-# ---------------------------------------------------------------------------
-
-def initialize_camera():
-    """Initialise la caméra PiCamera2"""
-    global camera
-    if camera is None:
-        try:
-            camera = Picamera2()
-            camera_config = camera.create_still_configuration(
-                main={"size": (1920, 1080)}
-            )
-            camera.configure(camera_config)
-            camera.start()
-        except Exception as e:
-            raise Exception(f"Erreur lors de l'initialisation de la caméra: {e}")
-
-def capture_and_save_image(pictures_dir: Path) -> Path:
-    """Capture une image et la sauvegarde"""
-    global camera
-    
-    if camera is None:
-        initialize_camera()
-    
-    try:
-        # Créer le répertoire s'il n'existe pas
-        pictures_dir.mkdir(parents=True, exist_ok=True)
-        
-        # Générer le nom de fichier avec timestamp
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]  # avec millisecondes
-        filename = f"{timestamp}_capture.jpg"
-        filepath = pictures_dir / filename
-        
-        # Capture avec PiCamera2
-        camera.capture_file(str(filepath))
-        
-        return filepath
-        
-    except Exception as e:
-        raise Exception(f"Erreur lors de la capture: {e}")
 
 def task_aruco_detection(queue: Queue, logger: Logger):
     """
@@ -89,6 +45,12 @@ def task_aruco_detection(queue: Queue, logger: Logger):
                 # Capturer une image
                 filepath = capture_and_save_image(pictures_dir)
                 logger.info(f"Image capturée: {filepath.name}")
+
+                # Pré-traitement de l'image
+                # preprocess_image(filepath)
+                
+                # Detection des coordonnées des éléments de jeu
+                # detect_aruco(filepath)
                 
                 # Envoyer le chemin du fichier à la queue pour le streaming
                 queue.put(str(filepath))
