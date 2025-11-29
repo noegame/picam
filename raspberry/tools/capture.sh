@@ -4,16 +4,16 @@
 # Configuration
 INTERVAL=5
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-DATA_DIR="$SCRIPT_DIR/../../pictures"
+OUTPUT_DIR="$SCRIPT_DIR/../../output/camera"
 
 # Créer le répertoire s'il n'existe pas
-mkdir -p "$DATA_DIR"
+mkdir -p "$OUTPUT_DIR"
 
 echo "======================================"
 echo "PiCam - Capture d'images en continu"
 echo "======================================"
 echo "Intervalle: ${INTERVAL} secondes"
-echo "Dossier: ${DATA_DIR}/"
+echo "Dossier: ${OUTPUT_DIR}/"
 echo "Appuyez sur Ctrl+C pour arrêter"
 echo "--------------------------------------"
 
@@ -35,7 +35,7 @@ while true; do
     # Générer le nom de fichier avec timestamp
     timestamp=$(date '+%Y%m%d_%H%M%S')
     filename="${timestamp}_capture_shell.jpg"
-    filepath="${DATA_DIR}/${filename}"
+    filepath="${OUTPUT_DIR}/${filename}"
     
     # Essayer rpicam-still (Raspberry Pi OS Bookworm)
     if command -v rpicam-still &> /dev/null; then

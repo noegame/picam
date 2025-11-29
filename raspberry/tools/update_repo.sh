@@ -1,2 +1,2 @@
-cd ~dev/picam/
+cd ~/dev/picam/
 git pull
