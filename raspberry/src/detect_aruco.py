@@ -15,10 +15,7 @@ Fonctionnalités :
 import cv2
 import numpy as np
 import math
-import sys
 import json
-import tkinter as tk
-from tkinter import filedialog
 from pathlib import Path
 from my_math import *
 
