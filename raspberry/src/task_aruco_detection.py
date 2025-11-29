@@ -24,15 +24,18 @@ from my_math import *
 # Constantes globales
 # --------------------------------------------------------------------------- 
 
-A1 = Point(600, 600, 20)
-B1 = Point(1400, 600, 22)
-C1 = Point(600, 2400, 21)
-D1 = Point(1400, 2400, 23)
+IMAGE_SIZE_X = 1920
+IMAGE_SIZE_Y = 1080
 
-# A1 = Point(53, 53, 20)      #SO
-# B1 = Point(123, 53, 22)     #SE
-# C1 = Point(53, 213, 21)     #NO
-# D1 = Point(123, 213, 23)    #NE
+# A1 = Point(600, 600, 20)
+# B1 = Point(1400, 600, 22)
+# C1 = Point(600, 2400, 21)
+# D1 = Point(1400, 2400, 23)
+
+A1 = Point(53, 53, 20)      #SO
+B1 = Point(123, 53, 22)     #SE
+C1 = Point(53, 213, 21)     #NO
+D1 = Point(123, 213, 23)    #NE
 
 FIXED_IDS = {20, 21, 22, 23}
 
@@ -90,14 +93,12 @@ def task_aruco_detection(queue: Queue, logger: Logger):
             D2 = find_point_by_id(tag_picture, 23)
 
             if not all([A2, B2, C2, D2]):
-                    print("Erreur: Tous les 4 tags fixes n'ont pas été détectés!")
                     missing = []
                     if not A2: missing.append("20")
                     if not B2: missing.append("22")
                     if not C2: missing.append("21")
                     if not D2: missing.append("23")
-                    print(f"Tags manquants: {', '.join(missing)}")
-                    print(f"Tags trouvés: {', '.join([str(p.ID) for p in tag_picture])}")
+                    logger.error(f"Tags fixes {', '.join(missing)} non trouvé(s)")
 
             else :
                 # Calcul de la transformation affine entre les deux ensembles de points 
@@ -107,7 +108,7 @@ def task_aruco_detection(queue: Queue, logger: Logger):
                 matrix = cv2.getPerspectiveTransform(src_points, dst_points)
 
                 # Applique la transformation à l'image entière
-                transformed_img = cv2.warpPerspective(img_distorted, matrix, (1920,1080))
+                transformed_img = cv2.warpPerspective(img_distorted, matrix, (IMAGE_SIZE_X, IMAGE_SIZE_Y))
 
                 # =============================================
 
