@@ -1,1 +1,7 @@
-other
+output/
+logs/
+.venv/
+*.log
+*code-workspace
+*__pycache__/
+wifi_config.json
