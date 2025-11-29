@@ -14,7 +14,7 @@ import numpy as np
 import cv2
 from pathlib import Path
 from multiprocessing import Queue
-from logging import Logger
+import logging
 from camera_functions import initialize_camera, capture_and_save_image
 from detect_aruco import preprocess_image
 from detect_aruco2 import detect_aruco
@@ -40,7 +40,7 @@ FIXED_IDS = {20, 21, 22, 23}
 # Fonctions
 # ---------------------------------------------------------------------------
 
-def task_aruco_detection(queue: Queue, logger: Logger):
+def task_aruco_detection(queue: Queue):
     """
     Tâche de capture: 
     - prend une photo
@@ -49,6 +49,7 @@ def task_aruco_detection(queue: Queue, logger: Logger):
     - enregistre la photo annotée
     - envoi le chemin de la photo à la queue pour le streaming
     """
+    logger = logging.getLogger('task_aruco_detection')
     try:
         repo_root = Path(__file__).resolve().parents[2]
         camera_pictures_dir = repo_root / "output" / "camera"

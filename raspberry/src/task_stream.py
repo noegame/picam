@@ -10,7 +10,6 @@ Reçoit les données de la détection (images et tags) d'une queue et les affich
 import logging
 import threading
 from multiprocessing import Queue
-from logging import Logger
 from pathlib import Path
 from flask import Flask, Response, jsonify, render_template
 
@@ -18,6 +17,7 @@ from flask import Flask, Response, jsonify, render_template
 # Constantes globales
 # ---------------------------------------------------------------------------
 
+logger = logging.getLogger('task_stream')
 app = Flask(__name__, template_folder='templates')
 data_lock = threading.Lock()
 
@@ -34,7 +34,7 @@ aruco_tags_data = []
 # Fonctions principales
 # ---------------------------------------------------------------------------
 
-def update_data_from_queue(queue: Queue, logger: Logger):
+def update_data_from_queue(queue: Queue):
     """Récupère les données de la queue, lit les images et met à jour les variables globales."""
     global image_data, aruco_tags_data
     
@@ -56,12 +56,12 @@ def update_data_from_queue(queue: Queue, logger: Logger):
             except Exception as e:
                 logger.error(f"Erreur lors de la lecture du fichier image {repo_root / data[key]}: {e}")
 
-def data_reader_thread(queue: Queue, logger: Logger):
+def data_reader_thread(queue: Queue):
     """Thread qui lit continuellement les données de la queue."""
     logger.info("Démarrage du thread de lecture des données")
     while True:
         try:
-            update_data_from_queue(queue, logger)
+            update_data_from_queue(queue)
         except Exception as e:
             logger.error(f"Erreur dans le thread de lecture des données: {e}", exc_info=True)
 
@@ -96,12 +96,12 @@ def index():
     """Page d'accueil avec les lecteurs vidéo et les données ArUco."""
     return render_template("index.html")
 
-def task_stream(queue: Queue, logger: Logger):
+def task_stream(queue: Queue):
     """Tâche de streaming: récupère les données de la queue et les sert via Flask."""
     logger.info("Démarrage de la tâche de streaming")
     
     # Démarre le thread de lecture des données
-    reader_thread = threading.Thread(target=data_reader_thread, args=(queue, logger), daemon=True)
+    reader_thread = threading.Thread(target=data_reader_thread, args=(queue,), daemon=True)
     reader_thread.start()
     
     # Lance le serveur Flask

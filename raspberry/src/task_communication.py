@@ -9,11 +9,12 @@ Tâche de communication avec le robot
 # ---------------------------------------------------------------------------
 
 from multiprocessing import Queue
-from logging import Logger
+import logging
 
 # ---------------------------------------------------------------------------
 # Fonctions principales
 # ---------------------------------------------------------------------------
 
-def task_communication(queue:Queue, logger:Logger):
+def task_communication(queue:Queue):
+    logger = logging.getLogger('task_communication')
     pass
