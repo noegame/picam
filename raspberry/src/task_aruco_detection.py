@@ -107,7 +107,7 @@ def task_aruco_detection(queue: Queue, logger: Logger):
                 matrix = cv2.getPerspectiveTransform(src_points, dst_points)
 
                 # Applique la transformation à l'image entière
-                transformed_img = cv2.warpPerspective(img_distorted, matrix, (600, 600)) # POURQUOI 600,600 ???
+                transformed_img = cv2.warpPerspective(img_distorted, matrix, (1920,1080))
 
                 # =============================================
 
