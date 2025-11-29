@@ -7,6 +7,7 @@ Reçoit les données de la détection (images et tags) d'une queue et les affich
 # Imports
 # ---------------------------------------------------------------------------
 
+import logging
 import threading
 from multiprocessing import Queue
 from logging import Logger
@@ -102,4 +103,9 @@ def task_stream(queue: Queue, logger: Logger):
     
     # Lance le serveur Flask
     logger.info("Démarrage du serveur Flask sur 0.0.0.0:5000")
+    
+    # Désactiver les logs de Werkzeug pour ne pas polluer la console
+    log = logging.getLogger('werkzeug')
+    log.setLevel(logging.ERROR)
+    
     app.run(host='0.0.0.0', port=5000, threaded=True, debug=False, use_reloader=False)

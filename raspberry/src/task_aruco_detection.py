@@ -101,7 +101,7 @@ def task_aruco_detection(queue: Queue, logger: Logger):
                 if not B2: missing.append("22")
                 if not C2: missing.append("21")
                 if not D2: missing.append("23")
-                logger.error(f"Tags fixes {', '.join(missing)} non trouvé(s)")
+                logger.warning(f"Tags fixes {', '.join(missing)} non trouvé(s)")
 
                 # Envoyer les données à la queue pour le streaming
                 data_for_queue = {

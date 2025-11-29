@@ -24,7 +24,6 @@ from my_math import *
 # ---------------------------------------------------------------------------
 
 # paramètres par défaut
-JSON_PATH = "aruco.json"
 DICT_NAME = "DICT_4X4_50"
 
 A1 = Point(600, 600, 20)
@@ -112,17 +111,22 @@ def create_detector_and_params(aruco_dict):
     # ancienne API
     return None, aruco_params
 
-def load_aruco_descriptions(json_path=JSON_PATH):
+def load_aruco_descriptions():
     """
     Charge les descriptions des tags ArUco depuis un fichier JSON.
+    Le fichier `aruco.json` est supposé être dans le même dossier que ce script.
     Returns:
         dict: Dictionnaire des descriptions des tags {id (str): description (str)}
     """
+    # Construit un chemin absolu vers 'aruco.json' relatif à l'emplacement de ce script
     try:
+        script_dir = Path(__file__).resolve().parent
+        json_path = script_dir / 'aruco.json'
         with open(json_path, 'r', encoding='utf-8') as f:
             return json.load(f)
     except Exception as e:
-        print(f"Warning: Impossible de charger {json_path}: {e}")
+        # json_path peut ne pas être défini si Path() échoue, mais c'est peu probable
+        print(f"Warning: Impossible de charger le fichier de description des tags ArUco: {e}")
         return {}
 
 def detect_in_image(img, aruco_dict, detector, aruco_params, draw=True, aruco_descriptions=None):
