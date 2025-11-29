@@ -10,13 +10,13 @@ Reçoit les données de la détection (images et tags) d'une queue et les affich
 import threading
 from multiprocessing import Queue
 from logging import Logger
-from flask import Flask, Response, jsonify
+from flask import Flask, Response, jsonify, render_template
 
 # ---------------------------------------------------------------------------
 # Constantes globales
 # ---------------------------------------------------------------------------
 
-app = Flask(__name__)
+app = Flask(__name__, template_folder='templates')
 data_lock = threading.Lock()
 
 # Dictionnaire pour stocker les données binaires des images
@@ -90,66 +90,7 @@ def get_aruco_data():
 @app.route('/')
 def index():
     """Page d'accueil avec les lecteurs vidéo et les données ArUco."""
-    return '''
-    <html>
-    <head>
-        <title>Pi Camera Stream - Processed</title>
-        <style>
-            body { font-family: sans-serif; margin: 0; padding: 1em; background-color: #f4f4f4; }
-            h1 { text-align: center; }
-            .container { display: flex; flex-wrap: wrap; justify-content: center; gap: 1em; }
-            .stream-box { border: 1px solid #ccc; padding: 0.5em; background-color: white; }
-            .stream-box h2 { margin: 0 0 0.5em 0; text-align: center; font-size: 1em; }
-            .stream-box img { max-width: 100%; display: block; }
-            #aruco-info { margin-top: 1em; }
-            #aruco-info pre { background-color: #eee; border: 1px solid #ddd; padding: 1em; white-space: pre-wrap; word-wrap: break-word; }
-        </style>
-    </head>
-    <body>
-        <h1>Raspberry Pi - Multi-stream</h1>
-        <div class="container">
-            <div class="stream-box">
-                <h2>Caméra Originale</h2>
-                <img src="/stream/original_img">
-            </div>
-            <div class="stream-box">
-                <h2>Image Détordue</h2>
-                <img src="/stream/undistorted_img">
-            </div>
-            <div class="stream-box">
-                <h2>Image Redressée</h2>
-                <img src="/stream/warped_img">
-            </div>
-        </div>
-        <div id="aruco-info">
-            <h2>Tags ArUco Détectés</h2>
-            <pre id="aruco-data-display">En attente de données...</pre>
-        </div>
-        <script>
-            function fetchArucoData() {
-                fetch('/aruco_data')
-                    .then(response => response.json())
-                    .then(data => {
-                        const display = document.getElementById('aruco-data-display');
-                        if (data && data.length > 0) {
-                            display.textContent = JSON.stringify(data, null, 2);
-                        } else {
-                            display.textContent = 'Aucun tag ArUco détecté.';
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Erreur lors de la récupération des données ArUco:', error);
-                        document.getElementById('aruco-data-display').textContent = 'Erreur de chargement.';
-                    });
-            }
-            // Récupérer les données toutes les secondes
-            setInterval(fetchArucoData, 1000);
-            // Premier appel au chargement de la page
-            fetchArucoData();
-        </script>
-    </body>
-    </html>
-    '''
+    return render_template("index.html")
 
 def task_stream(queue: Queue, logger: Logger):
     """Tâche de streaming: récupère les données de la queue et les sert via Flask."""

@@ -96,12 +96,21 @@ def task_aruco_detection(queue: Queue, logger: Logger):
             D2 = find_point_by_id(tag_picture, 23)
 
             if not all([A2, B2, C2, D2]):
-                    missing = []
-                    if not A2: missing.append("20")
-                    if not B2: missing.append("22")
-                    if not C2: missing.append("21")
-                    if not D2: missing.append("23")
-                    logger.error(f"Tags fixes {', '.join(missing)} non trouvé(s)")
+                missing = []
+                if not A2: missing.append("20")
+                if not B2: missing.append("22")
+                if not C2: missing.append("21")
+                if not D2: missing.append("23")
+                logger.error(f"Tags fixes {', '.join(missing)} non trouvé(s)")
+
+                # Envoyer les données à la queue pour le streaming
+                data_for_queue = {
+                    "original_img": str(filepath),
+                    "undistorted_img": str(filepath),
+                    "warped_img": str(filepath),
+                    "aruco_tags": [{"id": p.id, "x": p.x, "y": p.y} for p in tag_picture]
+                }
+                queue.put(data_for_queue)
 
             else :
                 # Calcul de la transformation affine entre les deux ensembles de points 
@@ -135,8 +144,8 @@ def task_aruco_detection(queue: Queue, logger: Logger):
                 }
                 queue.put(data_for_queue)          
                 
-                # Petite pause entre les captures (environ 40ms pour ~25 FPS)
-                # time.sleep(0.01)
+            # Petite pause entre les captures (environ 40ms pour ~25 FPS)
+            # time.sleep(0.01)
             
     except Exception as e:
         logger.error(f"Erreur fatale dans la tâche ArUco: {e}")
