@@ -108,7 +108,7 @@ def task_aruco_detection(queue: Queue, logger: Logger):
                     "original_img": str(filepath),
                     "undistorted_img": str(filepath),
                     "warped_img": str(filepath),
-                    "aruco_tags": [{"id": p.id, "x": p.x, "y": p.y} for p in tag_picture]
+                    "aruco_tags": [{"id": p.ID, "x": p.x, "y": p.y} for p in tag_picture]
                 }
                 queue.put(data_for_queue)
 
