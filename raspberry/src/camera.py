@@ -24,26 +24,26 @@ camera = None
 # Fonctions
 # ---------------------------------------------------------------------------
 
-def initialize_camera():
+def initialize_camera(w:int, h:int) -> None:
     """Initialise la caméra PiCamera2"""
     global camera
     if camera is None:
         try:
             camera = Picamera2()
             camera_config = camera.create_still_configuration(
-                main={"size": (1920, 1080)}
+                main={"size": (w, h)}
             )
             camera.configure(camera_config)
             camera.start()
         except Exception as e:
             raise Exception(f"Erreur lors de l'initialisation de la caméra: {e}")
 
-def capture_image(pictures_dir: Path) -> tuple[np.ndarray, Path]:
+def capture_image(w:int, h:int, pictures_dir: Path) -> tuple[np.ndarray, Path]:
     """Capture une image, la sauvegarde et la retourne en tant que np.ndarray"""
     global camera
     
     if camera is None:
-        initialize_camera()
+        initialize_camera(w, h)
     
     try:
         # Créer le répertoire s'il n'existe pas

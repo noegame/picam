@@ -10,13 +10,16 @@ Capture des photos et les envoie à la queue pour le streaming
 
 import time
 import os
-import numpy as np
 import cv2
+import logging
+
+import numpy as np
+import undistort_image as undistort
+
 from pathlib import Path
 from multiprocessing import Queue
-import logging
-from camera_functions import initialize_camera, capture_image
-from detect_aruco import preprocess_image
+
+from raspberry.src.camera import initialize_camera, capture_image
 from detect_aruco2 import detect_aruco
 from my_math import *
 
@@ -56,25 +59,28 @@ def task_aruco_detection(queue: Queue):
         camera_pictures_dir = repo_root / "output" / "camera"
         undistorted_pictures_dir = repo_root / "output" / "undistorted"
         warped_pictures_dir = repo_root / "output" / "warped"
+        calibration_file = script_dir + "/camera_calibration.npz"
         
         logger.info("Démarrage de la tâche de détection ArUco (capture de photos)")
         logger.info(f"Répertoire de sauvegarde: {camera_pictures_dir}")
         
         # Initialiser la caméra
-        initialize_camera()
+        initialize_camera(2000,2000)
         logger.info("Caméra initialisée avec succès")
         
         # Importation des coefficients de distorsion (calibration)
-        calibration_file = os.path.join(script_dir, "camera_calibration.npz")
-        data = np.load(calibration_file)
-        camera_matrix = data["camera_matrix"]
-        dist_coeffs = data["dist_coeffs"]
+        camera_matrix, dist_coeffs = undistort.import_camera_calibration(calibration_file)
+        logger.info("Paramètres de calibration de la caméra importés avec succès")
+
+        # Calcule une nouvelle matrice de caméra optimale pour la correction de la distorsion.
+        newcameramtx = undistort.process_new_camera_matrix(camera_matrix, dist_coeffs, (2000,2000))
+        logger.info("Nouvelle matrice de caméra optimisée calculée avec succès")
 
         # Boucle de capture
         while True:
             try:
                 # Capturer une image
-                original_img, original_filepath = capture_image(camera_pictures_dir)
+                original_img, original_filepath = capture_image(2000,2000,camera_pictures_dir)
                 logger.info(f"Image capturée: {original_filepath.name}")
 
             except Exception as e:
@@ -83,7 +89,8 @@ def task_aruco_detection(queue: Queue):
                 continue
             
             # Pré-traitement de l'image (correction de la distorsion)
-            img_distorted = preprocess_image(original_img, camera_matrix, dist_coeffs)
+            img_distorted = undistort.undistort(original_img, camera_matrix, dist_coeffs, newcameramtx)
+            logger.debug("Distorsion de l'image corrigée avec succès")
 
             # Détection des tags ArUco fixes
             tags_from_img = detect_aruco(img_distorted)
@@ -117,7 +124,10 @@ def task_aruco_detection(queue: Queue):
                 # Ordre: NO (20), NE (22), SE (23), SO (21)
                 src_points = np.array([[A2.x, A2.y], [B2.x, B2.y], [D2.x, D2.y], [C2.x, C2.y]], dtype=np.float32)
                 dst_points = np.array([[A1.x, A1.y], [B1.x, B1.y], [D1.x, D1.y], [C1.x, C1.y]], dtype=np.float32)
+                
+                # Matrice de transformation affine
                 matrix = cv2.getPerspectiveTransform(src_points, dst_points)
+
                 h, w = img_distorted.shape[:2]
                 transformed_img = cv2.warpPerspective(img_distorted, matrix, (h, w))
                 
