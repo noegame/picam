@@ -15,11 +15,11 @@ import logging
 
 import numpy as np
 import undistort_image as undistort
+import camera as camera
 
 from pathlib import Path
 from multiprocessing import Queue
 
-from camera import initialize_camera, capture_image
 from detect_aruco2 import detect_aruco
 from my_math import *
 
@@ -64,7 +64,7 @@ def task_aruco_detection(queue_to_stream: Queue, queue_to_com: Queue):
         logger.info("Démarrage de la tâche de détection ArUco (capture de photos)")
         
         # Initialiser la caméra
-        initialize_camera(2000,2000)
+        camera.initialize_camera(2000,2000)
         
         # Importation des coefficients de distorsion (calibration)
         camera_matrix, dist_coeffs = undistort.import_camera_calibration(calibration_file)
@@ -77,11 +77,14 @@ def task_aruco_detection(queue_to_stream: Queue, queue_to_com: Queue):
         newcameramtx = undistort.process_new_camera_matrix(camera_matrix, dist_coeffs, image_size)
         logger.info("Nouvelle matrice de caméra optimisée calculée avec succès")
 
+        # Points de destination pour le redressement
+        dst_points = np.array([[A1.x, A1.y], [B1.x, B1.y], [D1.x, D1.y], [C1.x, C1.y]], dtype=np.float32)
+
         # Boucle de capture
         while True:
             try:
                 # Capturer une image
-                original_img, original_filepath = capture_image(2000, 2000, camera_pictures_dir)
+                original_img, original_filepath = camera.capture_image(2000, 2000, camera_pictures_dir)
                 
             except Exception as e:
                 logger.error(f"Erreur lors de la capture: {e}")
@@ -123,13 +126,14 @@ def task_aruco_detection(queue_to_stream: Queue, queue_to_com: Queue):
                 # Ordonner les points dans le sens horaire pour éviter les rotations aléatoires
                 # Ordre: NO (20), NE (22), SE (23), SO (21)
                 src_points = np.array([[A2.x, A2.y], [B2.x, B2.y], [D2.x, D2.y], [C2.x, C2.y]], dtype=np.float32)
-                dst_points = np.array([[A1.x, A1.y], [B1.x, B1.y], [D1.x, D1.y], [C1.x, C1.y]], dtype=np.float32)
+                
                 
                 # Matrice de transformation affine
                 matrix = cv2.getPerspectiveTransform(src_points, dst_points)
 
-                h, w = img_distorted.shape[:2]
-                transformed_img = cv2.warpPerspective(img_distorted, matrix, (h, w))
+                w,h = img_distorted.shape[:2]
+                logger.debug(f" w : {w} h : {h} ")
+                transformed_img = cv2.warpPerspective(img_distorted, matrix, (w, h))
                 
                 # Compress img before sending to queue
                 _, warped_img_bytes = cv2.imencode('.jpg', transformed_img)
@@ -145,8 +149,6 @@ def task_aruco_detection(queue_to_stream: Queue, queue_to_com: Queue):
                 # TODO : détecter les tags dynamiques et calculer leur position réelle à partir de l'image redressée
             
             queue_to_stream.put(data_for_queue)          
-            
-            time.sleep(0.04) # Environ 25 FPS
             
     except Exception as e:
         logger.error(f"Erreur fatale dans la tâche ArUco: {e}")
