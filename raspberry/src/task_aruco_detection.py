@@ -116,7 +116,7 @@ def task_aruco_detection(queue: Queue):
                 dst_points = np.array([[A1.x, A1.y], [B1.x, B1.y], [C1.x, C1.y], [D1.x, D1.y]], dtype=np.float32)
                 matrix = cv2.getPerspectiveTransform(src_points, dst_points)
                 h, w = img_distorted.shape[:2]
-                transformed_img = cv2.warpPerspective(img_distorted, matrix, (h, w))
+                transformed_img = cv2.warpPerspective(img_distorted, matrix, (w, h))
                 
                 # Compress img before sending to queue
                 _, warped_img_bytes = cv2.imencode('.jpg', transformed_img)
