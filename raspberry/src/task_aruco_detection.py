@@ -112,8 +112,10 @@ def task_aruco_detection(queue: Queue):
                 }
             else:
                 # Redressement de l'image
-                src_points = np.array([[A2.x, A2.y], [B2.x, B2.y], [C2.x, C2.y], [D2.x, D2.y]], dtype=np.float32)
-                dst_points = np.array([[A1.x, A1.y], [B1.x, B1.y], [C1.x, C1.y], [D1.x, D1.y]], dtype=np.float32)
+                # Ordonner les points dans le sens horaire pour éviter les rotations aléatoires
+                # Ordre: NO (20), NE (22), SE (23), SO (21)
+                src_points = np.array([[A2.x, A2.y], [B2.x, B2.y], [D2.x, D2.y], [C2.x, C2.y]], dtype=np.float32)
+                dst_points = np.array([[A1.x, A1.y], [B1.x, B1.y], [D1.x, D1.y], [C1.x, C1.y]], dtype=np.float32)
                 matrix = cv2.getPerspectiveTransform(src_points, dst_points)
                 h, w = img_distorted.shape[:2]
                 transformed_img = cv2.warpPerspective(img_distorted, matrix, (w, h))
