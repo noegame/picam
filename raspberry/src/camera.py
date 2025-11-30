@@ -30,6 +30,7 @@ def initialize_camera(w:int, h:int) -> None:
     """Initialise la caméra PiCamera2"""
     global camera
     if camera is None:
+        logger.info("Initialisation de la caméra...")
         try:
             camera = Picamera2()
             camera_config = camera.create_still_configuration(
@@ -37,8 +38,9 @@ def initialize_camera(w:int, h:int) -> None:
             )
             camera.configure(camera_config)
             camera.start()
-            logging.info("Caméra initialisée avec succès.")
+            logger.info("Caméra initialisée avec succès.")
         except Exception as e:
+            logger.error(f"Erreur lors de l'initialisation de la caméra: {e}")
             raise Exception(f"Erreur lors de l'initialisation de la caméra: {e}")
 
 def capture_image(w:int, h:int, pictures_dir: Path) -> tuple[np.ndarray, Path]:
@@ -67,4 +69,5 @@ def capture_image(w:int, h:int, pictures_dir: Path) -> tuple[np.ndarray, Path]:
         return image_array, filepath
         
     except Exception as e:
+        logger.error(f"Erreur lors de la capture: {e}")
         raise Exception(f"Erreur lors de la capture: {e}")
