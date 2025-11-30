@@ -1,4 +1,5 @@
 # How to setup the project
+[readme](../README.md)
 
 ## Sommaire
 - [Prérequis](#prérequis)

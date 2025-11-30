@@ -16,3 +16,5 @@ Ce projet de ZOD a pour objectif :
 - [How to set up the raspberry pi environment](docs/how-to-set-up.md)
 - [How to connect to the raspberry pi](docs/how-to-connect.md)
 - [How to test the camera quickly](docs/how-to-test-the-camera.md)
+- [How to calibrate the camera](docs/how-to-calibrate-the-camera.md)
+- [Some code documentation](docs/code-documentation.md)
