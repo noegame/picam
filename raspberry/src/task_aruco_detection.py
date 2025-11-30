@@ -19,7 +19,7 @@ import undistort_image as undistort
 from pathlib import Path
 from multiprocessing import Queue
 
-from raspberry.src.camera import initialize_camera, capture_image
+from camera import initialize_camera, capture_image
 from detect_aruco2 import detect_aruco
 from my_math import *
 
