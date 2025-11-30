@@ -29,6 +29,7 @@ image_data = {
 }
 # Liste pour stocker les informations des tags ArUco
 aruco_tags_data = []
+filename_data = {"filename": None}
 
 # ---------------------------------------------------------------------------
 # Fonctions principales
@@ -36,7 +37,7 @@ aruco_tags_data = []
 
 def update_data_from_queue(queue: Queue):
     """Récupère les données de la queue et met à jour les variables globales."""
-    global image_data, aruco_tags_data
+    global image_data, aruco_tags_data, filename_data
     
     data = queue.get()
     
@@ -48,6 +49,10 @@ def update_data_from_queue(queue: Queue):
         for key in image_data.keys():
             if key in data:
                 image_data[key] = data[key]
+        
+        # Met à jour le nom de fichier
+        if "filename" in data:
+            filename_data["filename"] = data["filename"]
 
 def data_reader_thread(queue: Queue):
     """Thread qui lit continuellement les données de la queue."""
@@ -83,6 +88,12 @@ def get_aruco_data():
     """Endpoint pour récupérer les données des tags ArUco en JSON."""
     with data_lock:
         return jsonify(aruco_tags_data)
+
+@app.route('/filename')
+def get_filename():
+    """Endpoint pour récupérer le nom du fichier de l'image en JSON."""
+    with data_lock:
+        return jsonify(filename_data)
 
 @app.route('/')
 def index():

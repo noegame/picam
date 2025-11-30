@@ -108,7 +108,8 @@ def task_aruco_detection(queue: Queue):
                     "original_img": original_img_bytes.tobytes(),
                     "undistorted_img": undistorted_img_bytes.tobytes(),
                     "warped_img": undistorted_img_bytes.tobytes(),  # Fallback: utilise l'image non-distordue
-                    "aruco_tags": aruco_tags_for_queue
+                    "aruco_tags": aruco_tags_for_queue,
+                    "filename": original_filepath.name,
                 }
             else:
                 # Redressement de l'image
@@ -127,7 +128,8 @@ def task_aruco_detection(queue: Queue):
                     "original_img": original_img_bytes.tobytes(),
                     "undistorted_img": undistorted_img_bytes.tobytes(),
                     "warped_img": warped_img_bytes.tobytes(),
-                    "aruco_tags": aruco_tags_for_queue
+                    "aruco_tags": aruco_tags_for_queue,
+                    "filename": original_filepath.name,
                 }
 
                 # TODO : détecter les tags dynamiques et calculer leur position réelle à partir de l'image redressée

@@ -15,6 +15,7 @@
     </head>
     <body>
         <h1>Raspberry Pi - Multi-stream</h1>
+        <h2 id="filename-display" style="text-align: center; font-size: 1em; margin-top: 0;">En attente du nom de fichier...</h2>
         <div class="container">
             <div class="stream-box">
                 <h2>Caméra Originale</h2>
@@ -53,10 +54,31 @@
                         document.getElementById('aruco-data-display').textContent = 'Erreur de chargement.';
                     });
             }
+
+            function fetchFilename() {
+                fetch('/filename')
+                    .then(response => response.json())
+                    .then(data => {
+                        const display = document.getElementById('filename-display');
+                        if (data && data.filename) {
+                            display.textContent = data.filename;
+                        } else {
+                            display.textContent = 'Nom de fichier non disponible.';
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Erreur lors de la récupération du nom de fichier:', error);
+                        document.getElementById('filename-display').textContent = 'Erreur de chargement du nom de fichier.';
+                    });
+            }
+
             // Récupérer les données 24 fois par secondes
             setInterval(fetchArucoData, 40);
+            setInterval(fetchFilename, 40);
+
             // Premier appel au chargement de la page
             fetchArucoData();
+            fetchFilename();
         </script>
     </body>
     </html>
