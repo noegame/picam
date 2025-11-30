@@ -18,7 +18,7 @@ from task_stream import task_stream
 # ---------------------------------------------------------------------------
 
 
-def run_task(core_id, func, queue):
+def run_task(core_id, func, *args):
     """Exécute une tâche sur un cœur spécifique"""
     # Assignation du processus à un cœur spécifique
     try:
@@ -27,7 +27,7 @@ def run_task(core_id, func, queue):
         pass  # si pas permis, ça continue sans affinité forcée
 
     # Exécuter la tâche
-    func(queue)
+    func(*args)
 
 if __name__ == "__main__":
     # Configuration du logging avec chemin absolu
@@ -72,4 +72,3 @@ if __name__ == "__main__":
             p2.terminate()
         if p3:
             p3.terminate()
-
