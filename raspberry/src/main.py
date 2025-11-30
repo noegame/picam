@@ -29,27 +29,45 @@ def run_task(core_id, func, queue):
     # Exécuter la tâche
     func(queue)
 
-def main():
-    # Configuration du logging avec chemin absolu
-    logging_conf_path = Path(__file__).parent / 'logging.conf'
-    logging.config.fileConfig(str(logging_conf_path))
-    logger = logging.getLogger('main')
-    queue = Queue()
-
-    # Créer les processus
-    p1 = Process(target=run_task, args=(0, task_aruco_detection, queue))
-    p2 = Process(target=run_task, args=(1, task_communication, queue))
-    p3 = Process(target=run_task, args=(2, task_stream, queue))
-
-    # Démarrer les processus
-    p1.start()
-    p2.start()
-    p3.start()
-    
-    # Attendre la fin des processus
-    p1.join()
-    p2.join()
-    p3.join()
-
 if __name__ == "__main__":
-    main()
+    # Configuration du logging avec chemin absolu
+    repo_root = Path(__file__).resolve().parents[2]
+    log_file_path = repo_root / "logs" / "aruco_detection_flow.log"
+    
+    logging_conf_path = Path(__file__).parent / 'logging.conf'
+    logging.config.fileConfig(
+        str(logging_conf_path),
+        defaults={'log_file': str(log_file_path)}
+    )
+    logger = logging.getLogger('main')
+
+    p1, p2, p3 = None, None, None
+    
+    try:
+        queue = Queue()
+
+        # Créer les processus
+        p1 = Process(target=run_task, args=(0, task_aruco_detection, queue))
+        p2 = Process(target=run_task, args=(1, task_communication, queue))
+        p3 = Process(target=run_task, args=(2, task_stream, queue))
+
+        # Démarrer les processus
+        p1.start()
+        p2.start()
+        p3.start()
+        
+        # Attendre la fin des processus
+        p1.join()
+        p2.join()
+        p3.join()
+
+    except Exception as e:
+        logger.error(f"Erreur dans le main: {e}")
+        # Clean up
+        if p1:
+            p1.terminate()
+        if p2:
+            p2.terminate()
+        if p3:
+            p3.terminate()
+
