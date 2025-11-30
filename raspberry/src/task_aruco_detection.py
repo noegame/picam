@@ -43,7 +43,7 @@ FIXED_IDS = {20, 21, 22, 23}
 # Fonctions
 # ---------------------------------------------------------------------------
 
-def task_aruco_detection(queue: Queue):
+def task_aruco_detection(queue_to_stream: Queue, queue_to_com: Queue):
     """
     Tâche de capture: 
     - prend une photo
@@ -70,8 +70,11 @@ def task_aruco_detection(queue: Queue):
         camera_matrix, dist_coeffs = undistort.import_camera_calibration(calibration_file)
         logger.info("Paramètres de calibration de la caméra importés avec succès")
 
-        # Calcule une nouvelle matrice de caméra optimale pour la correction de la distorsion.
-        newcameramtx = undistort.process_new_camera_matrix(camera_matrix, dist_coeffs, (2000, 2000))
+        # Récupération de la taille de l'image
+        image_size = (2000, 2000)
+
+        # Calcul une nouvelle matrice de caméra optimale pour la correction de la distorsion.
+        newcameramtx = undistort.process_new_camera_matrix(camera_matrix, dist_coeffs, image_size)
         logger.info("Nouvelle matrice de caméra optimisée calculée avec succès")
 
         # Boucle de capture
@@ -141,7 +144,7 @@ def task_aruco_detection(queue: Queue):
 
                 # TODO : détecter les tags dynamiques et calculer leur position réelle à partir de l'image redressée
             
-            queue.put(data_for_queue)          
+            queue_to_stream.put(data_for_queue)          
             
             time.sleep(0.04) # Environ 25 FPS
             

@@ -42,14 +42,16 @@ if __name__ == "__main__":
     logger = logging.getLogger('main')
 
     p1, p2, p3 = None, None, None
-    
+
     try:
-        queue = Queue()
+        
+        queue_aruco_detection_to_stream = Queue()
+        queue_aruco_detection_to_com= Queue()       
 
         # Créer les processus
-        p1 = Process(target=run_task, args=(0, task_aruco_detection, queue))
-        p2 = Process(target=run_task, args=(1, task_communication, queue))
-        p3 = Process(target=run_task, args=(2, task_stream, queue))
+        p1 = Process(target=run_task, args=(0, task_aruco_detection, queue_aruco_detection_to_stream, queue_aruco_detection_to_com))
+        p2 = Process(target=run_task, args=(1, task_communication, queue_aruco_detection_to_com))
+        p3 = Process(target=run_task, args=(2, task_stream, queue_aruco_detection_to_stream))
 
         # Démarrer les processus
         p1.start()
