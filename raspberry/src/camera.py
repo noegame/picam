@@ -12,6 +12,7 @@ from pathlib import Path
 from picamera2 import Picamera2
 import numpy as np
 import cv2
+import logging
 
 # ---------------------------------------------------------------------------
 # Constantes globales
@@ -19,6 +20,7 @@ import cv2
 
 # Variable globale pour la caméra (singleton)
 camera = None
+logger = logging.getLogger('camera')
 
 # ---------------------------------------------------------------------------
 # Fonctions
@@ -35,6 +37,7 @@ def initialize_camera(w:int, h:int) -> None:
             )
             camera.configure(camera_config)
             camera.start()
+            logging.info("Caméra initialisée avec succès.")
         except Exception as e:
             raise Exception(f"Erreur lors de l'initialisation de la caméra: {e}")
 
@@ -59,6 +62,8 @@ def capture_image(w:int, h:int, pictures_dir: Path) -> tuple[np.ndarray, Path]:
         image_array = cv2.cvtColor(image_array, cv2.COLOR_BGR2RGB)
         camera.capture_file(str(filepath)) # On la sauvegarde pour le debug
         
+        logger.info(f"Image capturée: {filepath.name}")
+
         return image_array, filepath
         
     except Exception as e:

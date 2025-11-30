@@ -62,27 +62,24 @@ def task_aruco_detection(queue: Queue):
         calibration_file = script_dir + "/camera_calibration.npz"
         
         logger.info("Démarrage de la tâche de détection ArUco (capture de photos)")
-        logger.info(f"Répertoire de sauvegarde: {camera_pictures_dir}")
         
         # Initialiser la caméra
         initialize_camera(2000,2000)
-        logger.info("Caméra initialisée avec succès")
         
         # Importation des coefficients de distorsion (calibration)
         camera_matrix, dist_coeffs = undistort.import_camera_calibration(calibration_file)
         logger.info("Paramètres de calibration de la caméra importés avec succès")
 
         # Calcule une nouvelle matrice de caméra optimale pour la correction de la distorsion.
-        newcameramtx = undistort.process_new_camera_matrix(camera_matrix, dist_coeffs, (2000,2000))
+        newcameramtx = undistort.process_new_camera_matrix(camera_matrix, dist_coeffs, (2000, 2000))
         logger.info("Nouvelle matrice de caméra optimisée calculée avec succès")
 
         # Boucle de capture
         while True:
             try:
                 # Capturer une image
-                original_img, original_filepath = capture_image(2000,2000,camera_pictures_dir)
-                logger.info(f"Image capturée: {original_filepath.name}")
-
+                original_img, original_filepath = capture_image(2000, 2000, camera_pictures_dir)
+                
             except Exception as e:
                 logger.error(f"Erreur lors de la capture: {e}")
                 time.sleep(1) # Eviter de surcharger en cas d'erreur de capture en boucle
