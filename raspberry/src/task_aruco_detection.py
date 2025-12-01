@@ -16,11 +16,11 @@ import logging
 import numpy as np
 import undistort_image as undistort
 import camera as camera
+import raspberry.src.detect_aruco as detect_aruco
 
 from pathlib import Path
 from multiprocessing import Queue
 
-from detect_aruco2 import detect_aruco
 from my_math import *
 
 # ---------------------------------------------------------------------------
@@ -80,6 +80,13 @@ def task_aruco_detection(queue_to_stream: Queue, queue_to_com: Queue):
         # Points de destination pour le redressement
         dst_points = np.array([[A1.x, A1.y], [B1.x, B1.y], [D1.x, D1.y], [C1.x, C1.y]], dtype=np.float32)
 
+        # Initialise le détecteur openCV ArUco
+        aruco_dict = cv2.aruco.Dictionary_get(cv2.aruco.DICT_4X4_50)
+        aruco_params = cv2.aruco.DetectorParameters_create()
+        logger.info("Détecteur ArUco initialisé avec succès")
+
+        aruco_tags_for_queue = [Point]
+
         # Boucle de capture
         while True:
             try:
@@ -96,7 +103,10 @@ def task_aruco_detection(queue_to_stream: Queue, queue_to_com: Queue):
             logger.debug("Distorsion de l'image corrigée avec succès")
 
             # Détection des tags ArUco fixes
-            tags_from_img = detect_aruco(img_distorted)
+            tags_from_img, img_annotated = detect_aruco.detect_in_image(img_distorted, aruco_dict, None, aruco_params, draw=False)
+            
+            # artifice provisoire pour convertir la liste de tags détectés en liste de Point
+            tags_from_img = detect_aruco.convert_detected_tags(tags_from_img)
 
             # Récupère les coordonnées des 4 points fixes
             A2 = find_point_by_id(tags_from_img, 20)
@@ -108,7 +118,9 @@ def task_aruco_detection(queue_to_stream: Queue, queue_to_com: Queue):
             _, original_img_bytes = cv2.imencode('.jpg', original_img)
             _, undistorted_img_bytes = cv2.imencode('.jpg', img_distorted)
 
-            aruco_tags_for_queue = [{"id": p.ID, "x": p.x, "y": p.y} for p in tags_from_img]
+            # Prépare une liste des tags ArUco détectés pour la queue List[Points]
+            aruco_tags_for_queue = tags_from_img
+            logger.debug(f"Tags ArUco détectés et prêt pour queue: {[str(tag) for tag in tags_from_img]}")
 
             if not all([A2, B2, C2, D2]):
                 missing = [str(id) for id in [20, 22, 21, 23] if not find_point_by_id(tags_from_img, id)]

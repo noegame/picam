@@ -9,11 +9,11 @@ import math
 # ---------------------------------------------------------------------------
 
 class Point:
-    def __init__(self, x, y, ID, angle=None):
+    def __init__(self, x, y, aruco_id, angle=None):
         self.x = x
         self.y = y
-        self.ID = ID
-        self.angle = angle 
+        self.angle = angle
+        self.aruco_id = aruco_id
 
     def __str__(self):
         return f"Point(x={self.x}, y={self.y}, ID={self.ID}, angle={self.angle})"
