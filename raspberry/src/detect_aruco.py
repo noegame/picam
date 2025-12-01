@@ -17,7 +17,7 @@ from my_math import *
 # Fonctions
 # ---------------------------------------------------------------------------
 
-def detect_in_image(img: np.ndarray, aruco_dic: cv2.aruco_Dictionary, detector: cv2.aruco_Detector, aruco_params: cv2.aruco_DetectorParameters, draw=False, aruco_descriptions=None):
+def detect_in_image(img: np.ndarray, aruco_dic, detector, aruco_params, draw=False, aruco_descriptions=None):
     """
     Détecte les tags ArUco dans une image et ajoute leurs descriptions si disponibles.
     """
@@ -27,7 +27,7 @@ def detect_in_image(img: np.ndarray, aruco_dic: cv2.aruco_Dictionary, detector: 
     if detector is not None:
         corners_list, ids, rejected = detector.detectMarkers(gray)
     else:
-        corners_list, ids, rejected = cv2.aruco.detectMarkers(gray, aruco_dict, parameters=aruco_params)
+        corners_list, ids, rejected = cv2.aruco.detectMarkers(gray, aruco_dic, parameters=aruco_params)
 
     results = []
     if ids is None or len(ids) == 0:
