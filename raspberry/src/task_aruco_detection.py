@@ -16,7 +16,7 @@ import logging
 import numpy as np
 import undistort_image as undistort
 import camera as camera
-import raspberry.src.detect_aruco as detect_aruco
+import detect_aruco as detect_aruco
 
 from pathlib import Path
 from multiprocessing import Queue
