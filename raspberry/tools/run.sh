@@ -1,1 +1,6 @@
-python3 ~/dev/picam/raspberry/src/main.py
+#!/bin/bash
+
+# Get the directory where this script is located
+SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+
+python3 "$SCRIPT_DIR/../src/main.py" "$@"

@@ -15,7 +15,7 @@ import logging
 
 import numpy as np
 import undistort_image as undistort
-import camera as camera
+from raspberry.src.camera.camera_factory import get_camera
 import detect_aruco as detect_aruco
 
 from pathlib import Path
@@ -26,6 +26,8 @@ from my_math import *
 # ---------------------------------------------------------------------------
 # Constantes globales
 # --------------------------------------------------------------------------- 
+
+USE_FAKE_CAMERA = False
 
 # A1 = Point(600, 600, 20)
 # B1 = Point(1400, 600, 22)
@@ -62,16 +64,24 @@ def task_aruco_detection(queue_to_stream: Queue, queue_to_com: Queue):
         calibration_file = script_dir + "/camera_calibration.npz"
         
         logger.info("Démarrage de la tâche de détection ArUco (capture de photos)")
-        
-        # Initialiser la caméra
-        camera.initialize_camera(2000,2000)
+
+        # Initialiser la caméra via la factory
+        image_width, image_height = 2000, 2000
+        if USE_FAKE_CAMERA:
+            # Le dossier d'images pour la fausse caméra
+            fake_camera_folder = repo_root / "test_data" / "sample_images"
+            logger.info(f"Utilisation de la fausse caméra avec les images de: {fake_camera_folder}")
+            cam = get_camera(w=image_width, h=image_height, use_fake_camera=True, fake_camera_image_folder=fake_camera_folder)
+        else:
+            logger.info("Utilisation de la caméra réelle PiCamera2")
+            cam = get_camera(w=image_width, h=image_height)
         
         # Importation des coefficients de distorsion (calibration)
         camera_matrix, dist_coeffs = undistort.import_camera_calibration(calibration_file)
         logger.info("Paramètres de calibration de la caméra importés avec succès")
 
         # Récupération de la taille de l'image
-        image_size = (2000, 2000)
+        image_size = (image_width, image_height)
 
         # Calcul une nouvelle matrice de caméra optimale pour la correction de la distorsion.
         newcameramtx = undistort.process_new_camera_matrix(camera_matrix, dist_coeffs, image_size)
@@ -91,7 +101,7 @@ def task_aruco_detection(queue_to_stream: Queue, queue_to_com: Queue):
         while True:
             try:
                 # Capturer une image
-                original_img, original_filepath = camera.capture_image(2000, 2000, camera_pictures_dir)
+                original_img, original_filepath = cam.capture_image(pictures_dir=camera_pictures_dir)
                 
             except Exception as e:
                 logger.error(f"Erreur lors de la capture: {e}")
