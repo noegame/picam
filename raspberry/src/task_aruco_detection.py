@@ -15,7 +15,7 @@ import logging
 
 import numpy as np
 import undistort_image as undistort
-from raspberry.src.camera.camera_factory import get_camera
+from camera.camera_factory import get_camera
 import detect_aruco as detect_aruco
 
 from pathlib import Path
