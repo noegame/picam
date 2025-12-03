@@ -33,6 +33,7 @@ if __name__ == "__main__":
     # Configuration du logging avec chemin absolu
     repo_root = Path(__file__).resolve().parents[2]
     log_file_path = repo_root / "logs" / "aruco_detection_flow.log"
+    log_file_path.parent.mkdir(parents=True, exist_ok=True)
     
     logging_conf_path = Path(__file__).parent / 'logging.conf'
     logging.config.fileConfig(
