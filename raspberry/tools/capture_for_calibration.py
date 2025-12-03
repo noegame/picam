@@ -12,7 +12,6 @@ Appuyez sur Ctrl+C pour arrêter le script.
 """
 
 import configparser
-import io
 import logging
 import sys
 import time
@@ -139,8 +138,7 @@ def main():
     except Exception as e:
         logger.error(f"Une erreur fatale est survenue : {e}")
     finally:
-        global cam
-        if 'cam' in globals() and cam and hasattr(cam, 'stop'):
+        if cam and hasattr(cam, 'stop'):
             cam.stop()
         logger.info("Caméra arrêtée.")
 
