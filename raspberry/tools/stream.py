@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 # Stream Video from Raspberry Pi Camera to Local Computer 
 
 # ---------------------------------------------------------------------------
