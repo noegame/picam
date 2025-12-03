@@ -12,6 +12,7 @@ Appuyez sur Ctrl+C pour arrêter le script.
 """
 
 import configparser
+import io
 import logging
 import sys
 import time
@@ -38,25 +39,44 @@ def setup_logging():
 app = Flask(__name__)
 cam = None
 output_path = None
+frame_lock = threading.Lock()
+current_frame_bytes = None
+
+def capture_thread_func():
+    """Thread qui capture continuellement les images de la caméra."""
+    global current_frame_bytes
+    logger = logging.getLogger('capture_thread')
+    logger.info("Démarrage du thread de capture.")
+    while True:
+        try:
+            frame = cam.capture_array()
+            if frame is not None:
+                import cv2
+                ret, buffer = cv2.imencode('.jpg', frame)
+                if ret:
+                    with frame_lock:
+                        current_frame_bytes = buffer.tobytes()
+        except Exception as e:
+            logger.error(f"Erreur dans le thread de capture : {e}")
+        # Attendre un court instant pour ne pas surcharger le CPU
+        time.sleep(0.04) # Vise environ 25 images/seconde
 
 def generate_frames():
     """Générateur pour le flux vidéo."""
-    global cam
+    global current_frame_bytes
     while True:
-        # Utilise capture_array pour obtenir l'image pour le streaming
-        frame = cam.capture_array()
-        if frame is not None:
-            # cv2.imencode s'attend à du BGR, mais fonctionne souvent avec RGB.
-            # Si les couleurs sont inversées dans le stream, décommentez la ligne ci-dessous
-            # import cv2
-            # frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
-            import cv2
-            ret, buffer = cv2.imencode('.jpg', frame)
-            if ret:
-                frame_bytes = buffer.tobytes()
+        with frame_lock:
+            if current_frame_bytes:
+                frame_to_send = current_frame_bytes
+            else:
+                frame_to_send = None
+        
+        if frame_to_send:
                 yield (b'--frame\r\n'
-                       b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
-        time.sleep(0.05) # Limite le framerate pour ne pas surcharger le CPU
+                       b'Content-Type: image/jpeg\r\n\r\n' + frame_to_send + b'\r\n')
+        
+        # Attendre un peu pour que le client puisse suivre
+        time.sleep(0.05)
 
 @app.route('/video_feed')
 def video_feed():
@@ -116,6 +136,10 @@ def main():
         if hasattr(cam, 'start'):
              cam.start()
         
+        # Démarrer le thread de capture d'images en arrière-plan
+        cap_thread = threading.Thread(target=capture_thread_func, daemon=True)
+        cap_thread.start()
+
         # Démarrer le serveur Flask dans un thread séparé
         flask_thread = threading.Thread(target=lambda: app.run(host='0.0.0.0', port=5000, debug=False), daemon=True)
         flask_thread.start()
