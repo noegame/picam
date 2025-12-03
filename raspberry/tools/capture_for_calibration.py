@@ -49,7 +49,7 @@ def capture_thread_func():
     logger.info("Démarrage du thread de capture.")
     while True:
         try:
-            frame = cam.capture_array()
+            frame = cam.capture_array(stream_name='lores')
             if frame is not None:
                 import cv2
                 ret, buffer = cv2.imencode('.jpg', frame)
@@ -57,7 +57,7 @@ def capture_thread_func():
                     with frame_lock:
                         current_frame_bytes = buffer.tobytes()
         except Exception as e:
-            logger.error(f"Erreur dans le thread de capture : {e}")
+            logger.error(f"Erreur dans le thread de capture : {e}", exc_info=False)
         # Attendre un court instant pour ne pas surcharger le CPU
         time.sleep(0.04) # Vise environ 25 images/seconde
 
