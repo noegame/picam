@@ -2,6 +2,7 @@
 """
 Tâche de détection ArUco
 Capture des photos et les envoie à la queue pour le streaming
+version de opencv :  4.10
 """
 
 # ---------------------------------------------------------------------------
@@ -96,8 +97,8 @@ def task_aruco_detection(queue_to_stream: Queue, queue_to_com: Queue):
         dst_points = np.array([[A1.x, A1.y], [B1.x, B1.y], [D1.x, D1.y], [C1.x, C1.y]], dtype=np.float32)
 
         # Initialise le détecteur openCV ArUco
-        aruco_dict = cv2.aruco.Dictionary_get(cv2.aruco.DICT_4X4_50)
-        aruco_params = cv2.aruco.DetectorParameters_create()
+        aruco_dict = cv2.aruco.Dictionary(cv2.aruco.DICT_4X4_50)
+        aruco_params = cv2.aruco.DetectorParameters()
         logger.info("Détecteur ArUco initialisé avec succès")
 
         aruco_tags_for_queue = [Point]
