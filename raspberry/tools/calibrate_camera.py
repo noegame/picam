@@ -1,15 +1,11 @@
 #!/usr/bin/env python3
 """
 calibrate_camera.py
-
-Usage:
-  python calibrate_camera.py --images_dir ./calib_images --pattern 9x6 --square_size 0.025 --out camera_calibration.npz
-  python calibrate_camera.py --images_dir "C:\HOME\WORK\raspberrypi\ZOD\picam\data\calibration" --pattern 9x6 --square_size 0.025 --out camera_calibration.npz
-
-- images_dir : dossier contenant les photos du damier (formats jpg/png)
-- pattern : nombre de coins intérieurs du damier "colsxrows" (ex: 9x6 -> 9 colonnes intérieures, 6 lignes intérieures)
-- square_size : taille d'une case en mètres (ou en unités cohérentes) ; ex 0.025 pour 25 mm
-- out : fichier de sortie (.npz) contenant camera_matrix, dist_coeffs, rvecs, tvecs
+Les paramètres sont maintenant définis directement dans le code.
+- Le dossier des images est fixé à 'output/calibration'.
+- Le motif du damier est '9x6'.
+- La taille des carrés est de 0.025m.
+- Le fichier de sortie est 'camera_calibration.npz' dans le dossier 'src'.
 
 Description:
     Calibre une caméra en utilisant des images d'un damier (chessboard) avec OpenCV.
@@ -18,21 +14,12 @@ Description:
 
 """
 
-import argparse
 import glob
 import os
 import sys
 import cv2
 import numpy as np
-
-def parse_args():
-    p = argparse.ArgumentParser(description="Calibrate camera using chessboard images (OpenCV).")
-    p.add_argument("--images_dir", required=True, help="Folder with calibration images")
-    p.add_argument("--pattern", default="9x6", help="Chessboard inner corners as COLSxROWS (default 9x6)")
-    p.add_argument("--square_size", type=float, default=0.025, help="Size of one square in meters (default 0.025)")
-    p.add_argument("--out", default="camera_calibration.npz", help="Output file (npz) to save calibration")
-    p.add_argument("--show", action="store_true", help="Show corner detection images (for debugging)")
-    return p.parse_args()
+from pathlib import Path
 
 def collect_image_paths(images_dir):
     exts = ("*.jpg", "*.jpeg", "*.png", "*.bmp", "*.tiff")
@@ -42,7 +29,7 @@ def collect_image_paths(images_dir):
     paths.sort()
     return paths
 
-def calibrate_from_images(image_paths, pattern_size, square_size, show=False):
+def calibrate_from_images(image_paths, pattern_size, square_size):
     cols, rows = pattern_size
     objp = np.zeros((rows*cols, 3), np.float32)
     # Note: grid coordinates: (0,0,0), (1,0,0), ... (cols-1,rows-1,0) scaled by square_size
@@ -66,16 +53,8 @@ def calibrate_from_images(image_paths, pattern_size, square_size, show=False):
             objpoints.append(objp)
             imgpoints.append(corners_refined)
             used_images.append(p)
-            if show:
-                vis = img.copy()
-                cv2.drawChessboardCorners(vis, (cols, rows), corners_refined, found)
-                cv2.imshow("corners", vis)
-                cv2.waitKey(500)
         else:
             print(f"Chessboard not found in {p}", file=sys.stderr)
-
-    if show:
-        cv2.destroyAllWindows()
 
     if len(objpoints) < 5:
         raise RuntimeError(f"Not enough valid calibration images ({len(objpoints)} found). Need >=5 (prefer >=10-20).")
@@ -118,23 +97,24 @@ def undistort_example(image_path, camera_matrix, dist_coeffs, out_path=None):
     return und
 
 def main():
-    args = parse_args()
-    try:
-        cols_rows = args.pattern.lower().split('x')
-        if len(cols_rows) != 2:
-            raise ValueError()
-        cols = int(cols_rows[0]); rows = int(cols_rows[1])
-    except Exception:
-        print("pattern must be like 9x6 (COLSxROWS of inner corners).", file=sys.stderr)
-        sys.exit(1)
-
-    image_paths = collect_image_paths(args.images_dir)
+    # --- Paramètres de calibration ---
+    repo_root = Path(__file__).resolve().parents[2]
+    images_dir = repo_root / "output" / "calibration"
+    pattern_str = "9x6"
+    square_size = 0.025
+    # Le fichier de calibration est sauvegardé dans 'src' pour être trouvé par 'task_aruco_detection'
+    output_file = repo_root / "raspberry" / "src" / "camera_calibration.npz"
+    
+    cols, rows = map(int, pattern_str.split('x'))
+    
+    print(f"Recherche des images de calibration dans : {images_dir}")
+    image_paths = collect_image_paths(str(images_dir))
     if not image_paths:
-        print(f"No images found in {args.images_dir}", file=sys.stderr)
+        print(f"Aucune image trouvée dans {images_dir}", file=sys.stderr)
         sys.exit(1)
 
     print(f"Found {len(image_paths)} images, trying to detect chessboard {cols}x{rows}...")
-    result = calibrate_from_images(image_paths, (cols, rows), args.square_size, show=args.show)
+    result = calibrate_from_images(image_paths, (cols, rows), square_size)
 
     # Print & save
     print("Calibration RMS error (returned by calibrateCamera):", result["ret"])
@@ -144,7 +124,7 @@ def main():
     print("Distortion coefficients:\n", result["dist_coeffs"].ravel())
     print("Used images:", len(result["used_images"]))
 
-    np.savez(args.out,
+    np.savez(str(output_file),
              camera_matrix=result["camera_matrix"],
              dist_coeffs=result["dist_coeffs"],
              rvecs=np.array(result["rvecs"], dtype=object),
@@ -152,7 +132,7 @@ def main():
              reprojection_error=result["reprojection_error"],
              image_size=result["image_size"],
              used_images=result["used_images"])
-    print(f"Saved calibration to {args.out}")
+    print(f"Calibration sauvegardée dans {output_file}")
 
     # Optional: undistort and save first used image for quick check
     try:
