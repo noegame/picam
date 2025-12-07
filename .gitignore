@@ -1,6 +1,7 @@
 output/
 logs/
 .venv/
+.env/
 *.log
 *code-workspace
 *__pycache__/
