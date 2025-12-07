@@ -38,6 +38,14 @@ class PiCamera:
             logger.error(f"Erreur lors de l'initialisation de la caméra: {e}")
             raise Exception(f"Erreur lors de l'initialisation de la caméra: {e}")
 
+    def capture_array(self) -> np.ndarray:
+        """Capture une image et la retourne en tant que np.ndarray (format RGB)."""
+        try:
+            return self.camera.capture_array()
+        except Exception as e:
+            logger.error(f"Erreur lors de la capture du tableau: {e}")
+            raise Exception(f"Erreur lors de la capture du tableau: {e}")
+
     def capture_image(self, pictures_dir: Path) -> tuple[np.ndarray, Path]:
         """Capture une image, la sauvegarde et la retourne en tant que np.ndarray"""
         try:
@@ -45,7 +53,7 @@ class PiCamera:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
             filename = f"{timestamp}_capture.jpg"
             filepath = pictures_dir / filename
-            image_array = self.camera.capture_array()
+            image_array = self.capture_array()
             self.camera.capture_file(str(filepath))
             logger.info(f"Image capturée: {filepath.name}")
             return cv2.cvtColor(image_array, cv2.COLOR_BGR2RGB), filepath

@@ -39,6 +39,23 @@ class FakeCamera:
         self.current_image_index = 0
         logger.info(f"Fausse caméra initialisée avec {len(self.image_files)} images.")
 
+    def capture_array(self) -> np.ndarray:
+        """'Capture' une image en lisant un fichier et la retourne en tant que np.ndarray (format RGB)."""
+        try:
+            source_path = self.image_files[self.current_image_index]
+            image_array = cv2.imread(str(source_path))  # cv2 lit en BGR
+            
+            # Convertir BGR en RGB pour cohérence avec PiCamera
+            image_array_rgb = cv2.cvtColor(image_array, cv2.COLOR_BGR2RGB)
+            
+            self.current_image_index = (self.current_image_index + 1) % len(self.image_files)
+            logger.info(f"Image 'capturée' du tableau: {source_path.name}")
+            
+            return image_array_rgb
+        except Exception as e:
+            logger.error(f"Erreur lors de la capture simulée du tableau: {e}")
+            raise Exception(f"Erreur lors de la capture simulée du tableau: {e}")
+
     def capture_image(self, pictures_dir: Path) -> tuple[np.ndarray, Path]:
         """'Capture' une image en lisant un fichier, la sauvegarde et la retourne."""
         try:

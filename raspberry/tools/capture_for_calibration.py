@@ -50,8 +50,8 @@ def capture_thread_func():
     logger.info("Démarrage du thread de capture.")
     while True:
         try:
-            # Utiliser la méthode interne camera.capture_array() de Picamera2
-            frame = cam.camera.capture_array()
+            # Utiliser la méthode capture_array() du wrapper
+            frame = cam.capture_array()
             if frame is not None:
                 # Convertir de RGB à BGR pour l'affichage correct (Picamera2 retourne RGB)
                 frame_bgr = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
