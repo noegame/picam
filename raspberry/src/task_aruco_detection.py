@@ -67,7 +67,7 @@ def task_aruco_detection(queue_to_stream: Queue, queue_to_com: Queue):
         camera_pictures_dir.mkdir(parents=True, exist_ok=True)
         undistorted_pictures_dir.mkdir(parents=True, exist_ok=True)
         warped_pictures_dir.mkdir(parents=True, exist_ok=True)
-        calibration_file = script_dir + "/camera_calibration.npz"
+        calibration_file = repo_root / "raspberry" / "config" / "camera_calibration.npz"
         
         logger.info("Démarrage de la tâche de détection ArUco (capture de photos)")
 

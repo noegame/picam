@@ -41,6 +41,7 @@ cam = None
 output_path = None
 frame_lock = threading.Lock()
 current_frame_bytes = None
+import cv2
 
 def capture_thread_func():
     """Thread qui capture continuellement les images de la caméra."""
@@ -49,10 +50,12 @@ def capture_thread_func():
     logger.info("Démarrage du thread de capture.")
     while True:
         try:
-            frame = cam.capture_array()
+            # Utiliser la méthode interne camera.capture_array() de Picamera2
+            frame = cam.camera.capture_array()
             if frame is not None:
-                import cv2
-                ret, buffer = cv2.imencode('.jpg', frame)
+                # Convertir de RGB à BGR pour l'affichage correct (Picamera2 retourne RGB)
+                frame_bgr = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+                ret, buffer = cv2.imencode('.jpg', frame_bgr)
                 if ret:
                     with frame_lock:
                         current_frame_bytes = buffer.tobytes()
@@ -62,7 +65,7 @@ def capture_thread_func():
         time.sleep(0.04) # Vise environ 25 images/seconde
 
 def generate_frames():
-    """Générateur pour le flux vidéo."""
+    """Générateur pour le flux vidéo en multipart/x-mixed-replace."""
     global current_frame_bytes
     while True:
         with frame_lock:
@@ -72,8 +75,10 @@ def generate_frames():
                 frame_to_send = None
         
         if frame_to_send:
-                yield (b'--frame\r\n'
-                       b'Content-Type: image/jpeg\r\n\r\n' + frame_to_send + b'\r\n')
+            frame_len = len(frame_to_send)
+            yield (b'--frame\r\n'
+                   b'Content-Type: image/jpeg\r\n'
+                   b'Content-Length: ' + str(frame_len).encode() + b'\r\n\r\n' + frame_to_send + b'\r\n')
         
         # Attendre un peu pour que le client puisse suivre
         time.sleep(0.05)
@@ -93,13 +98,17 @@ def index():
             <style>
                 body { font-family: sans-serif; text-align: center; margin-top: 2rem; background-color: #f0f0f0; }
                 h1 { color: #333; }
+                .container { padding: 20px; }
                 img { border: 2px solid #ccc; max-width: 90%; height: auto; background-color: #fff; }
+                .instructions { color: #666; font-size: 16px; margin: 20px 0; }
             </style>
         </head>
         <body>
-            <h1>Aperçu pour Calibration</h1>
-            <p>Positionnez le damier et appuyez sur 'Entrée' dans la console pour capturer une image.</p>
-            <img src="/video_feed">
+            <div class="container">
+                <h1>Aperçu pour Calibration</h1>
+                <p class="instructions">Positionnez le damier et appuyez sur 'Entrée' dans la console pour capturer une image.</p>
+                <img src="/video_feed" alt="Flux vidéo de la caméra">
+            </div>
         </body>
     </html>
     """
@@ -113,7 +122,7 @@ def main():
 
     try:
         # Chemin vers le fichier de configuration
-        config_path = Path(__file__).parent / 'config.ini'
+        config_path = repo_root / 'raspberry' / 'config' / 'config.ini'
         if not config_path.exists():
             logger.error(f"Le fichier de configuration '{config_path}' est introuvable.")
             return
@@ -132,17 +141,21 @@ def main():
         # Initialiser la caméra
         logger.info(f"Initialisation de la caméra avec une résolution de {image_width}x{image_height}")
         cam = get_camera(w=image_width, h=image_height, use_fake_camera=False)
-        # Pour le streaming, la caméra doit être démarrée si ce n'est pas déjà fait
-        if hasattr(cam, 'start'):
-             cam.start()
         
         # Démarrer le thread de capture d'images en arrière-plan
         cap_thread = threading.Thread(target=capture_thread_func, daemon=True)
         cap_thread.start()
+        
+        # Attendre un peu que la première frame soit capturée
+        time.sleep(0.5)
 
         # Démarrer le serveur Flask dans un thread séparé
-        flask_thread = threading.Thread(target=lambda: app.run(host='0.0.0.0', port=5000, debug=False), daemon=True)
+        flask_thread = threading.Thread(target=lambda: app.run(host='0.0.0.0', port=5000, debug=False, use_reloader=False), daemon=True)
         flask_thread.start()
+        
+        # Attendre que le serveur Flask soit prêt
+        time.sleep(1)
+        
         logger.info("="*50)
         logger.info("Serveur de streaming démarré.")
         logger.info("Ouvrez votre navigateur et allez sur http://<ip_du_raspberry>:5000")

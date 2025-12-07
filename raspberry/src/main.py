@@ -35,7 +35,7 @@ if __name__ == "__main__":
     log_file_path = repo_root / "logs" / "aruco_detection_flow.log"
     log_file_path.parent.mkdir(parents=True, exist_ok=True)
     
-    logging_conf_path = Path(__file__).parent / 'logging.conf'
+    logging_conf_path = repo_root / 'raspberry' / 'config' / 'logging.conf'
     logging.config.fileConfig(
         str(logging_conf_path),
         defaults={'log_file': str(log_file_path)}

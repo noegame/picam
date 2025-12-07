@@ -5,7 +5,7 @@ Les paramètres sont maintenant définis directement dans le code.
 - Le dossier des images est fixé à 'output/calibration'.
 - Le motif du damier est '9x6'.
 - La taille des carrés est de 0.025m.
-- Le fichier de sortie est 'camera_calibration.npz' dans le dossier 'src'.
+- Le fichier de sortie est 'camera_calibration.npz' dans le dossier 'config'.
 
 Description:
     Calibre une caméra en utilisant des images d'un damier (chessboard) avec OpenCV.
@@ -102,8 +102,8 @@ def main():
     images_dir = repo_root / "output" / "calibration"
     pattern_str = "9x6"
     square_size = 0.025
-    # Le fichier de calibration est sauvegardé dans 'src' pour être trouvé par 'task_aruco_detection'
-    output_file = repo_root / "raspberry" / "src" / "camera_calibration.npz"
+    # Le fichier de calibration est sauvegardé dans 'config' pour être trouvé par 'task_aruco_detection'
+    output_file = repo_root / "raspberry" / "config" / "camera_calibration.npz"
     
     cols, rows = map(int, pattern_str.split('x'))
     
