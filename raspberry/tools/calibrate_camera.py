@@ -102,8 +102,6 @@ def main():
     images_dir = repo_root / "output" / "calibration"
     pattern_str = "9x6"
     square_size = 0.025
-    # Le fichier de calibration est sauvegardé dans 'config' pour être trouvé par 'task_aruco_detection'
-    output_file = repo_root / "raspberry" / "config" / "camera_calibration.npz"
     
     cols, rows = map(int, pattern_str.split('x'))
     
@@ -124,6 +122,11 @@ def main():
     print("Distortion coefficients:\n", result["dist_coeffs"].ravel())
     print("Used images:", len(result["used_images"]))
 
+    # Créer le nom du fichier avec la résolution
+    img_width, img_height = result["image_size"]
+    output_filename = f"camera_calibration_{img_width}x{img_height}.npz"
+    output_file = repo_root / "raspberry" / "config" / output_filename
+    
     np.savez(str(output_file),
              camera_matrix=result["camera_matrix"],
              dist_coeffs=result["dist_coeffs"],

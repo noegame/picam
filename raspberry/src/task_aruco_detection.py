@@ -67,7 +67,6 @@ def task_aruco_detection(queue_to_stream: Queue, queue_to_com: Queue):
         camera_pictures_dir.mkdir(parents=True, exist_ok=True)
         undistorted_pictures_dir.mkdir(parents=True, exist_ok=True)
         warped_pictures_dir.mkdir(parents=True, exist_ok=True)
-        calibration_file = repo_root / "raspberry" / "config" / "camera_calibration.npz"
         
         logger.info("Démarrage de la tâche de détection ArUco (capture de photos)")
 
@@ -82,6 +81,11 @@ def task_aruco_detection(queue_to_stream: Queue, queue_to_com: Queue):
             logger.info("Utilisation de la caméra réelle PiCamera2")
             cam = get_camera(w=image_width, h=image_height)
         
+        # Trouver le fichier de calibration correspondant à la résolution
+        config_dir = repo_root / "raspberry" / "config"
+        calibration_filename = f"camera_calibration_{image_width}x{image_height}.npz"
+        calibration_file = config_dir / calibration_filename
+             
         # Importation des coefficients de distorsion (calibration)
         camera_matrix, dist_coeffs = undistort.import_camera_calibration(calibration_file)
         logger.info("Paramètres de calibration de la caméra importés avec succès")
