@@ -7,7 +7,7 @@
 import cv2
 import numpy as np
 import math
-from my_math import *
+from raspberry.src.my_math import *
 
 # ---------------------------------------------------------------------------
 # Constantes globales
