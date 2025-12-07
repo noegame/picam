@@ -1,0 +1,14 @@
+# How to Run PiCam on Raspberry Pi
+
+## Running the Main Application
+
+``` shell
+cd /home/roboteseo/dev/picam
+python3 -m raspberry.src.main
+```
+
+## Capturing Images for Calibration
+``` shell
+cd /home/roboteseo/dev/picam
+python3 -m raspberry.tools.capture_for_calibration
+```
