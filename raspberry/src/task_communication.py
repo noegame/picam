@@ -15,9 +15,10 @@ import logging
 # Fonctions principales
 # ---------------------------------------------------------------------------
 
-def task_communication(queue:Queue):
-    logger = logging.getLogger('task_communication')
-    
+
+def task_communication(queue: Queue):
+    logger = logging.getLogger("task_communication")
+
     while True:
         try:
             message = queue.get()

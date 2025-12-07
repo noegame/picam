@@ -1,4 +1,7 @@
+black
+flask
 numpy
 opencv-python
-flask
 picamera2
+pip
+python-dotenv

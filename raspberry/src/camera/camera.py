@@ -17,15 +17,17 @@ import logging
 # Classe
 # ---------------------------------------------------------------------------
 
-logger = logging.getLogger('camera')
+logger = logging.getLogger("camera")
+
 
 class PiCamera:
     """Wrapper pour la caméra PiCamera2."""
-    
+
     def __init__(self, w: int, h: int):
         """Initialise la caméra PiCamera2."""
         try:
             from picamera2 import Picamera2
+
             logger.info("Initialisation de la caméra...")
             self.camera = Picamera2()
             camera_config = self.camera.create_still_configuration(

@@ -11,27 +11,25 @@ Les images sont sauvegardées dans 'output/calibration'.
 Appuyez sur Ctrl+C pour arrêter le script.
 """
 
-import configparser
-import io
 import logging
-import sys
 import time
+import cv2
 from pathlib import Path
-
-# Ajoute le répertoire 'src' au chemin de recherche des modules pour trouver camera_factory
-repo_root = Path(__file__).resolve().parents[2]
-sys.path.append(str(repo_root / "raspberry" / "src"))
-
-from camera.camera_factory import get_camera
 from flask import Flask, Response
 import threading
+
+from raspberry.src.camera.camera_factory import get_camera
+from raspberry.config.env_loader import EnvConfig
+
+# Load environment configuration
+EnvConfig()
 
 
 def setup_logging():
     """Configure le logging pour l'application."""
     logging.basicConfig(
         level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         stream=sys.stdout,
     )
 
@@ -43,10 +41,11 @@ frame_lock = threading.Lock()
 current_frame_bytes = None
 import cv2
 
+
 def capture_thread_func():
     """Thread qui capture continuellement les images de la caméra."""
     global current_frame_bytes
-    logger = logging.getLogger('capture_thread')
+    logger = logging.getLogger("capture_thread")
     logger.info("Démarrage du thread de capture.")
     while True:
         try:
@@ -55,14 +54,15 @@ def capture_thread_func():
             if frame is not None:
                 # Convertir de RGB à BGR pour l'affichage correct (Picamera2 retourne RGB)
                 frame_bgr = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
-                ret, buffer = cv2.imencode('.jpg', frame_bgr)
+                ret, buffer = cv2.imencode(".jpg", frame_bgr)
                 if ret:
                     with frame_lock:
                         current_frame_bytes = buffer.tobytes()
         except Exception as e:
             logger.error(f"Erreur dans le thread de capture : {e}")
         # Attendre un court instant pour ne pas surcharger le CPU
-        time.sleep(0.04) # Vise environ 25 images/seconde
+        time.sleep(0.04)  # Vise environ 25 images/seconde
+
 
 def generate_frames():
     """Générateur pour le flux vidéo en multipart/x-mixed-replace."""
@@ -73,22 +73,32 @@ def generate_frames():
                 frame_to_send = current_frame_bytes
             else:
                 frame_to_send = None
-        
+
         if frame_to_send:
             frame_len = len(frame_to_send)
-            yield (b'--frame\r\n'
-                   b'Content-Type: image/jpeg\r\n'
-                   b'Content-Length: ' + str(frame_len).encode() + b'\r\n\r\n' + frame_to_send + b'\r\n')
-        
+            yield (
+                b"--frame\r\n"
+                b"Content-Type: image/jpeg\r\n"
+                b"Content-Length: "
+                + str(frame_len).encode()
+                + b"\r\n\r\n"
+                + frame_to_send
+                + b"\r\n"
+            )
+
         # Attendre un peu pour que le client puisse suivre
         time.sleep(0.05)
 
-@app.route('/video_feed')
+
+@app.route("/video_feed")
 def video_feed():
     """Route pour le streaming vidéo."""
-    return Response(generate_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
+    return Response(
+        generate_frames(), mimetype="multipart/x-mixed-replace; boundary=frame"
+    )
 
-@app.route('/')
+
+@app.route("/")
 def index():
     """Page d'accueil qui affiche le flux vidéo."""
     return """
@@ -113,59 +123,75 @@ def index():
     </html>
     """
 
+
 def main():
     """Fonction principale du script de capture."""
     setup_logging()
-    logger = logging.getLogger('capture_for_calibration')
+    logger = logging.getLogger("capture_for_calibration")
 
     global cam, output_path
 
     try:
         # Chemin vers le fichier de configuration
-        config_path = repo_root / 'raspberry' / 'config' / 'config.ini'
+        config_path = repo_root / "raspberry" / "config" / "config.ini"
         if not config_path.exists():
-            logger.error(f"Le fichier de configuration '{config_path}' est introuvable.")
+            logger.error(
+                f"Le fichier de configuration '{config_path}' est introuvable."
+            )
             return
 
         # Lire la configuration
         config = configparser.ConfigParser()
         config.read(config_path)
-        image_width = config.getint('camera', 'width')
-        image_height = config.getint('camera', 'height')
+        image_width = config.getint("camera", "width")
+        image_height = config.getint("camera", "height")
 
         # Créer le dossier de sortie
-        output_path = repo_root / "output" / "calibration" # Défini pour la capture d'image
+        output_path = (
+            repo_root / "output" / "calibration"
+        )  # Défini pour la capture d'image
         output_path.mkdir(parents=True, exist_ok=True)
         logger.info(f"Les images seront sauvegardées dans : {output_path}")
 
         # Initialiser la caméra
-        logger.info(f"Initialisation de la caméra avec une résolution de {image_width}x{image_height}")
+        logger.info(
+            f"Initialisation de la caméra avec une résolution de {image_width}x{image_height}"
+        )
         cam = get_camera(w=image_width, h=image_height, use_fake_camera=False)
-        
+
         # Démarrer le thread de capture d'images en arrière-plan
         cap_thread = threading.Thread(target=capture_thread_func, daemon=True)
         cap_thread.start()
-        
+
         # Attendre un peu que la première frame soit capturée
         time.sleep(0.5)
 
         # Démarrer le serveur Flask dans un thread séparé
-        flask_thread = threading.Thread(target=lambda: app.run(host='0.0.0.0', port=5000, debug=False, use_reloader=False), daemon=True)
+        flask_thread = threading.Thread(
+            target=lambda: app.run(
+                host="0.0.0.0", port=5000, debug=False, use_reloader=False
+            ),
+            daemon=True,
+        )
         flask_thread.start()
-        
+
         # Attendre que le serveur Flask soit prêt
         time.sleep(1)
-        
-        logger.info("="*50)
-        logger.info("Serveur de streaming démarré.")
-        logger.info("Ouvrez votre navigateur et allez sur http://<ip_du_raspberry>:5000")
-        logger.info("="*50)
 
-        logger.info("\nAppuyez sur [Entrée] pour prendre une photo, ou Ctrl+C pour quitter.\n")
+        logger.info("=" * 50)
+        logger.info("Serveur de streaming démarré.")
+        logger.info(
+            "Ouvrez votre navigateur et allez sur http://<ip_du_raspberry>:5000"
+        )
+        logger.info("=" * 50)
+
+        logger.info(
+            "\nAppuyez sur [Entrée] pour prendre une photo, ou Ctrl+C pour quitter.\n"
+        )
 
         # Boucle pour attendre l'input de l'utilisateur
         while True:
-            input() # Attend que l'utilisateur appuie sur Entrée
+            input()  # Attend que l'utilisateur appuie sur Entrée
             logger.info("Capture d'une image...")
             _, filepath = cam.capture_image(pictures_dir=output_path)
             logger.info(f"Image sauvegardée : {filepath.name}")
@@ -175,9 +201,10 @@ def main():
     except Exception as e:
         logger.error(f"Une erreur fatale est survenue : {e}")
     finally:
-        if cam and hasattr(cam, 'stop'):
+        if cam and hasattr(cam, "stop"):
             cam.stop()
         logger.info("Caméra arrêtée.")
+
 
 if __name__ == "__main__":
     main()
