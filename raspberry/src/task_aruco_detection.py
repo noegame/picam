@@ -204,14 +204,29 @@ def task_aruco_detection(queue_to_stream: Queue, queue_to_com: Queue):
                 logger.debug(f" w : {w} h : {h} ")
                 transformed_img = cv2.warpPerspective(img_distorted, matrix, (w, h))
 
+                # Encode distorted image to JPEG for efficient transmission
+                _, jpeg_bytes_distorted = cv2.imencode(
+                    ".jpg", img_distorted, [cv2.IMWRITE_JPEG_QUALITY, 85]
+                )
+                jpeg_bytes_distorted = jpeg_bytes_distorted.tobytes()
+
                 data_for_queue = {
-                    "undistorted_img": jpeg_bytes,
+                    "undistorted_img": jpeg_bytes_distorted,
                     "img_width": image_width,
                     "img_height": image_height,
                     "aruco_tags": tags_from_img,
                 }
 
                 # TODO : détecter les tags dynamiques et calculer leur position réelle à partir de l'image redressée
+                # Detect dynamic tags (excluding fixed markers)
+                dynamic_tags = [
+                    tag for tag in tags_from_img if tag.aruco_id not in FIXED_IDS
+                ]
+                if dynamic_tags:
+                    logger.info(
+                        f"Tags dynamiques détectés: {[tag.aruco_id for tag in dynamic_tags]}"
+                    )
+                    # data_for_queue["dynamic_tags"] = dynamic_tags
 
             # Frame rate limiting: maintain target FPS
             elapsed = time.time() - last_frame_time
