@@ -27,3 +27,26 @@ src_points : coordonnées des points dans l'image distordue (points détectés s
 dst_points : coordonnées des points dans l'image redressée (points attendus sur le tag ArUco).
 
 ## Détection des tags ArUco
+
+
+## Pi caméra 
+
+Here are the main differences between create_still_configuration() and create_preview_configuration() in Picamera2:
+
+create_still_configuration():
+
+Optimized for single, high-quality image captures
+Uses high resolution (often the full sensor resolution)
+Slower frame rate (captures one frame at a time)
+More processing/encoding overhead per frame
+Better for photos where quality matters more than speed
+Not suitable for continuous streaming
+
+create_preview_configuration():
+
+Optimized for continuous video streaming/real-time preview
+Lower resolution (typically 640x480 or similar)
+Fast frame rate (25-30+ FPS)
+Minimal latency between captures
+Less processing overhead - frames update continuously
+Ideal for live video feeds and continuous frame access
