@@ -11,6 +11,7 @@ def get_camera(
     w: int,
     h: int,
     use_fake_camera: bool = False,
+    config_mode: str = "preview",
     fake_camera_image_folder: Optional[Path] = None,
 ):
     """
@@ -19,6 +20,7 @@ def get_camera(
     :param w: Largeur de l'image.
     :param h: Hauteur de l'image.
     :param use_fake_camera: Si True, retourne une instance de FakeCamera.
+    :param config_mode: Mode de configuration - "preview" (streaming) ou "still" (captures uniques).
     :param fake_camera_image_folder: Dossier contenant les images pour la FakeCamera.
     :return: Une instance de caméra (PiCamera ou FakeCamera).
     """
@@ -33,4 +35,4 @@ def get_camera(
     else:
         from .camera import PiCamera
 
-        return PiCamera(w=w, h=h)
+        return PiCamera(w=w, h=h, config_mode=config_mode)

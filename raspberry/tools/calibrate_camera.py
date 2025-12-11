@@ -164,13 +164,16 @@ def main():
     # Optional: undistort and save first used image for quick check
     try:
         ex_path = result["used_images"][0]
+        output_dir = repo_root / "output" / "calibration_result"
+        output_dir.mkdir(parents=True, exist_ok=True)
+        undistorted_file = output_dir / "undistorted_example.png"
         und = undistort_example(
             ex_path,
             result["camera_matrix"],
             result["dist_coeffs"],
-            out_path="undistorted_example.png",
+            out_path=str(undistorted_file),
         )
-        print("Saved undistorted example to undistorted_example.png")
+        print(f"Saved undistorted example to {undistorted_file}")
     except Exception as e:
         print("Could not create undistorted example:", e, file=sys.stderr)
 

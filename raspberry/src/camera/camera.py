@@ -23,16 +23,32 @@ logger = logging.getLogger("camera")
 class PiCamera:
     """Wrapper pour la caméra PiCamera2."""
 
-    def __init__(self, w: int, h: int):
-        """Initialise la caméra PiCamera2."""
+    def __init__(self, w: int, h: int, config_mode: str = "preview"):
+        """
+        Initialise la caméra PiCamera2.
+
+        :param w: Largeur de l'image
+        :param h: Hauteur de l'image
+        :param config_mode: Mode de configuration - "preview" (streaming continu) ou "still" (captures uniques)
+        """
         try:
             from picamera2 import Picamera2
 
             logger.info("Initialisation de la caméra...")
             self.camera = Picamera2()
-            camera_config = self.camera.create_still_configuration(
-                main={"size": (w, h)}
-            )
+            self.config_mode = config_mode
+
+            if config_mode == "still":
+                logger.info(f"Mode: STILL (captures uniques optimisées)")
+                camera_config = self.camera.create_still_configuration(
+                    main={"size": (w, h)}
+                )
+            else:  # "preview" by default
+                logger.info(f"Mode: PREVIEW (streaming continu)")
+                camera_config = self.camera.create_preview_configuration(
+                    main={"format": "XRGB8888", "size": (w, h)}
+                )
+
             self.camera.configure(camera_config)
             self.camera.start()
             logger.info("Caméra initialisée avec succès.")
