@@ -31,8 +31,6 @@ EnvConfig()
 # Constantes globales
 # ---------------------------------------------------------------------------
 
-USE_FAKE_CAMERA = False
-
 # A1 = Point(600, 600, 20)
 # B1 = Point(1400, 600, 22)
 # C1 = Point(600, 2400, 21)
@@ -78,25 +76,24 @@ def task_aruco_detection(queue_to_stream: Queue, queue_to_com: Queue):
         # Load configuration from .env
         image_width = EnvConfig.get_camera_width()
         image_height = EnvConfig.get_camera_height()
-        use_fake_camera = EnvConfig.get_use_fake_camera()
         calibration_filename = EnvConfig.get_calibration_filename()
+        use_fake_camera = EnvConfig.get_use_fake_camera()
 
-        # Initialiser la caméra via la factory
+        # Initialiser la caméra
         if use_fake_camera:
-            # Le dossier d'images pour la fausse caméra
-            fake_camera_folder = repo_root / "test_data" / "sample_images"
             logger.info(
-                f"Utilisation de la fausse caméra avec les images de: {fake_camera_folder}"
+                "Mode caméra simulée (USE_FAKE_CAMERA=true) - Testing mode only"
             )
+            camera_pictures_dir_temp = repo_root / "output" / "camera"
             cam = get_camera(
                 w=image_width,
                 h=image_height,
                 use_fake_camera=True,
-                fake_camera_image_folder=fake_camera_folder,
+                fake_camera_image_folder=camera_pictures_dir_temp,
             )
         else:
             logger.info("Utilisation de la caméra réelle PiCamera2")
-            cam = get_camera(w=image_width, h=image_height)
+            cam = get_camera(w=image_width, h=image_height, allow_fallback=False)
 
         # Trouver le fichier de calibration correspondant à la résolution
         config_dir = repo_root / "raspberry" / "config"
@@ -127,7 +124,10 @@ def task_aruco_detection(queue_to_stream: Queue, queue_to_com: Queue):
         aruco_params = cv2.aruco.DetectorParameters()
         logger.info("Détecteur ArUco initialisé avec succès")
 
-        aruco_tags_for_queue = [Point]
+        # Frame rate limiter (target 10 FPS to reduce latency and queue buildup)
+        target_fps = 10
+        frame_time = 1.0 / target_fps
+        last_frame_time = time.time()
 
         # Boucle de capture
         while True:
@@ -144,9 +144,12 @@ def task_aruco_detection(queue_to_stream: Queue, queue_to_com: Queue):
                 )  # Eviter de surcharger en cas d'erreur de capture en boucle
                 continue
 
+            # Convert RGB to BGR for OpenCV processing
+            img_bgr = cv2.cvtColor(original_img, cv2.COLOR_RGB2BGR)
+
             # Pré-traitement de l'image (correction de la distorsion)
             img_distorted = undistort.undistort(
-                original_img, camera_matrix, dist_coeffs, newcameramtx
+                img_bgr, camera_matrix, dist_coeffs, newcameramtx
             )
             logger.debug("Distorsion de l'image corrigée avec succès")
 
@@ -164,15 +167,12 @@ def task_aruco_detection(queue_to_stream: Queue, queue_to_com: Queue):
             C2 = find_point_by_id(tags_from_img, 21)
             D2 = find_point_by_id(tags_from_img, 23)
 
-            # Compress img before sending to queue
-            _, original_img_bytes = cv2.imencode(".jpg", original_img)
-            _, undistorted_img_bytes = cv2.imencode(".jpg", img_distorted)
-
-            # Prépare une liste des tags ArUco détectés pour la queue List[Points]
-            aruco_tags_for_queue = tags_from_img
-            logger.debug(
-                f"Tags ArUco détectés et prêt pour queue: {[str(tag) for tag in tags_from_img]}"
+            # Encode directly to JPEG for efficient transmission (quality 85 for good balance)
+            _, jpeg_bytes = cv2.imencode(
+                ".jpg", img_distorted, [cv2.IMWRITE_JPEG_QUALITY, 85]
             )
+            # Convert numpy array to bytes
+            jpeg_bytes = jpeg_bytes.tobytes()
 
             if not all([A2, B2, C2, D2]):
                 missing = [
@@ -183,11 +183,10 @@ def task_aruco_detection(queue_to_stream: Queue, queue_to_com: Queue):
                 logger.warning(f"Tags fixes {', '.join(missing)} non trouvé(s)")
 
                 data_for_queue = {
-                    "original_img": original_img_bytes.tobytes(),
-                    "undistorted_img": undistorted_img_bytes.tobytes(),
-                    "warped_img": undistorted_img_bytes.tobytes(),  # Fallback: utilise l'image non-distordue
-                    "aruco_tags": aruco_tags_for_queue,
-                    "filename": original_filepath.name,
+                    "undistorted_img": jpeg_bytes,
+                    "img_width": image_width,
+                    "img_height": image_height,
+                    "aruco_tags": tags_from_img,
                 }
             else:
                 # Redressement de l'image
@@ -205,18 +204,21 @@ def task_aruco_detection(queue_to_stream: Queue, queue_to_com: Queue):
                 logger.debug(f" w : {w} h : {h} ")
                 transformed_img = cv2.warpPerspective(img_distorted, matrix, (w, h))
 
-                # Compress img before sending to queue
-                _, warped_img_bytes = cv2.imencode(".jpg", transformed_img)
-
                 data_for_queue = {
-                    "original_img": original_img_bytes.tobytes(),
-                    "undistorted_img": undistorted_img_bytes.tobytes(),
-                    "warped_img": warped_img_bytes.tobytes(),
-                    "aruco_tags": aruco_tags_for_queue,
-                    "filename": original_filepath.name,
+                    "undistorted_img": jpeg_bytes,
+                    "img_width": image_width,
+                    "img_height": image_height,
+                    "aruco_tags": tags_from_img,
                 }
 
                 # TODO : détecter les tags dynamiques et calculer leur position réelle à partir de l'image redressée
+
+            # Frame rate limiting: maintain target FPS
+            elapsed = time.time() - last_frame_time
+            sleep_time = frame_time - elapsed
+            if sleep_time > 0:
+                time.sleep(sleep_time)
+            last_frame_time = time.time()
 
             queue_to_stream.put(data_for_queue)
 

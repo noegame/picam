@@ -33,7 +33,16 @@ class PiCamera:
         """
         try:
             from picamera2 import Picamera2
+        except ImportError as ie:
+            error_msg = (
+                "Impossible d'importer picamera2. "
+                "Assurez-vous que libcamera est installé et disponible sur le système. "
+                "Si vous n'êtes pas sur un Raspberry Pi, utilisez fake_camera=True."
+            )
+            logger.error(error_msg)
+            raise ImportError(error_msg) from ie
 
+        try:
             logger.info("Initialisation de la caméra...")
             self.camera = Picamera2()
             self.config_mode = config_mode

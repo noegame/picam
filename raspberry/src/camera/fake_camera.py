@@ -87,6 +87,9 @@ class FakeCamera:
             shutil.copy(source_path, filepath)
             image_array = cv2.imread(str(filepath))  # cv2 lit en BGR
 
+            # Convertir BGR en RGB pour cohérence avec PiCamera
+            image_array_rgb = cv2.cvtColor(image_array, cv2.COLOR_BGR2RGB)
+
             self.current_image_index = (self.current_image_index + 1) % len(
                 self.image_files
             )
@@ -94,7 +97,7 @@ class FakeCamera:
                 f"Image 'capturée': {filepath.name} (source: {source_path.name})"
             )
 
-            return image_array, filepath
+            return image_array_rgb, filepath
         except Exception as e:
             logger.error(f"Erreur lors de la capture simulée: {e}")
             raise Exception(f"Erreur lors de la capture simulée: {e}")

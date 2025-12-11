@@ -35,9 +35,9 @@ def detect_in_image(
     if detector is not None:
         corners_list, ids, rejected = detector.detectMarkers(gray)
     else:
-        corners_list, ids, rejected = cv2.aruco.detectMarkers(
-            gray, aruco_dic, parameters=aruco_params
-        )
+        # Utiliser la nouvelle API OpenCV 4.7+
+        detector = cv2.aruco.ArucoDetector(aruco_dic, aruco_params)
+        corners_list, ids, rejected = detector.detectMarkers(gray)
 
     results = []
     if ids is None or len(ids) == 0:

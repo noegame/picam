@@ -22,6 +22,15 @@ class Point:
     def __print__(self):
         return self.__str__()
 
+    def to_dict(self):
+        """Convert Point object to a JSON-serializable dictionary."""
+        return {
+            "x": self.x,
+            "y": self.y,
+            "aruco_id": self.aruco_id,
+            "angle": self.angle,
+        }
+
 
 def distance(p1: Point, p2: Point) -> float:
     """Calcule la distance euclidienne entre deux points"""

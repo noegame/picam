@@ -2,35 +2,82 @@
     <html>
     <head>
         <title>Picam</title>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <style>
-            body { font-family: sans-serif; margin: 0; padding: 1em; background-color: #f4f4f4; }
-            h1 { text-align: center; }
-            .container { display: flex; flex-wrap: wrap; justify-content: center; gap: 1em; }
-            .stream-box { border: 1px solid #ccc; padding: 0.5em; background-color: white; }
-            .stream-box h2 { margin: 0 0 0.5em 0; text-align: center; font-size: 1em; }
-            .stream-box img { max-width: 100%; display: block; }
-            #aruco-info { margin-top: 1em; }
-            #aruco-info pre { background-color: #eee; border: 1px solid #ddd; padding: 1em; white-space: pre-wrap; word-wrap: break-word; }
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body { 
+                font-family: sans-serif; 
+                background-color: white; 
+                display: flex;
+                flex-direction: column;
+                height: 100vh;
+                overflow: hidden;
+            }
+            .header {
+                background-color: #333;
+                color: white;
+                padding: 1em;
+                text-align: center;
+                border-bottom: 1px solid #555;
+            }
+            .header h1 { font-size: 1.5em; margin: 0; }
+            .header p { font-size: 0.9em; color: #aaa; margin: 0.5em 0 0 0; }
+            .stream-container {
+                flex: 1;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 0;
+                overflow: hidden;
+                width: 100%;
+            }
+            .stream-box {
+                width: 100%;
+                height: 100%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background-color: #000;
+                border: none;
+                border-radius: 0;
+                overflow: hidden;
+            }
+            .stream-box img { 
+                width: 100%;
+                height: 100%;
+                object-fit: contain;
+                display: block;
+            }
+            #aruco-info { 
+                background-color: #333;
+                color: white;
+                padding: 1em;
+                border-top: 1px solid #555;
+                max-height: 150px;
+                overflow-y: auto;
+                font-size: 0.85em;
+            }
+            #aruco-info h2 { font-size: 1em; margin-bottom: 0.5em; }
+            #aruco-info pre { 
+                background-color: #222; 
+                border: 1px solid #555; 
+                padding: 0.5em; 
+                white-space: pre-wrap; 
+                word-wrap: break-word;
+                font-size: 0.8em;
+                color: #0f0;
+            }
         </style>
     </head>
     <body>
-        <h1>Raspberry Pi - Multi-stream</h1>
-        <h2 id="filename-display" style="text-align: center; font-size: 1em; margin-top: 0;">En attente du nom de fichier...</h2>
-        <div class="container">
+        <div class="header">
+            <h1>Raspberry Pi Stream</h1>
+            <p id="filename-display" style="display: none;">En attente du nom de fichier...</p>
+        </div>
+        <div class="stream-container">
             <div class="stream-box">
-                <h2>Caméra Originale</h2>
-                <img src="/stream/original_img">
-                <p style="text-align: center; font-size: 0.8em; margin: 0.5em 0 0 0;">original_img</p>
-            </div>
-            <div class="stream-box">
-                <h2>Image Détordue</h2>
-                <img src="/stream/undistorted_img">
-                <p style="text-align: center; font-size: 0.8em; margin: 0.5em 0 0 0;">undistorted_img</p>
-            </div>
-            <div class="stream-box">
-                <h2>Image Redressée</h2>
-                <img src="/stream/warped_img">
-                <p style="text-align: center; font-size: 0.8em; margin: 0.5em 0 0 0;">warped_img</p>
+                <img src="/stream/undistorted_img" alt="Image Détordue">
             </div>
         </div>
         <div id="aruco-info">
@@ -46,7 +93,7 @@
                         if (data && data.length > 0) {
                             display.textContent = JSON.stringify(data, null, 2);
                         } else {
-                            display.textContent = 'Aucun tag ArUco détecté.';
+                            display.textContent = 'no arucotag detected';
                         }
                     })
                     .catch(error => {
@@ -72,7 +119,7 @@
                     });
             }
 
-            // Récupérer les données 24 fois par secondes
+            // Récupérer les données 25 fois par secondes
             setInterval(fetchArucoData, 40);
             setInterval(fetchFilename, 40);
 
