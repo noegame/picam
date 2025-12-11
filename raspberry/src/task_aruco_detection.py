@@ -61,7 +61,8 @@ def task_aruco_detection(queue_to_stream: Queue, queue_to_com: Queue):
     """
     logger = logging.getLogger("task_aruco_detection")
     try:
-        script_dir = os.path.dirname(os.path.abspath(__file__))
+
+        # Prepare output directories
         repo_root = Path(__file__).resolve().parents[2]
         camera_pictures_dir = repo_root / "output" / "camera"
         undistorted_pictures_dir = repo_root / "output" / "undistorted"

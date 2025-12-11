@@ -18,9 +18,9 @@ class EnvConfig:
         :param env_path: Path to .env file. If None, searches for it in parent directories.
         """
         if env_path is None:
-            # Search for .env file starting from script directory
+            # Search for .env file at project root
             repo_root = Path(__file__).resolve().parents[2]
-            env_path = repo_root / "raspberry" / ".env"
+            env_path = repo_root / ".env"
 
         if not env_path.exists():
             raise FileNotFoundError(
@@ -75,7 +75,9 @@ class EnvConfig:
         print("\n" + "=" * 60)
         print("PiCam Configuration")
         print("=" * 60)
-        print(f"Camera Resolution: {EnvConfig.get_camera_width()}x{EnvConfig.get_camera_height()}")
+        print(
+            f"Camera Resolution: {EnvConfig.get_camera_width()}x{EnvConfig.get_camera_height()}"
+        )
         print(f"Flask Host: {EnvConfig.get_flask_host()}")
         print(f"Flask Port: {EnvConfig.get_flask_port()}")
         print(f"Log Level: {EnvConfig.get_log_level()}")

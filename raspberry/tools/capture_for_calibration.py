@@ -17,7 +17,6 @@ Appuyez sur Ctrl+C pour arrêter le script.
 
 import logging
 import sys
-import configparser
 from pathlib import Path
 from datetime import datetime
 
@@ -45,20 +44,10 @@ def main():
     repo_root = Path(__file__).resolve().parents[2]
 
     try:
-        # Chemin vers le fichier de configuration
-        config_path = repo_root / "raspberry" / "config" / "config.ini"
-        if not config_path.exists():
-            logger.error(
-                f"Le fichier de configuration '{config_path}' est introuvable."
-            )
-            return
-
-        # Lire la configuration
+        # Charger la configuration depuis .env
         logger.info("Chargement de la configuration...")
-        config = configparser.ConfigParser()
-        config.read(config_path)
-        image_width = config.getint("camera", "width")
-        image_height = config.getint("camera", "height")
+        image_width = EnvConfig.get_camera_width()
+        image_height = EnvConfig.get_camera_height()
         logger.info(f"Résolution configurée : {image_width}x{image_height}")
 
         # Créer le dossier de sortie
