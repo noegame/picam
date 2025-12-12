@@ -1,86 +1,80 @@
 #!/bin/bash
-# =====================================================
-# Script : setup_wifi.sh
-# Objectif : Configurer automatiquement plusieurs réseaux Wi-Fi
-#             sur Raspberry Pi OS Bookworm à partir d’un fichier JSON.
-# Auteur : ChatGPT (GPT-5)
-# =====================================================
+
+# Script to add WiFi networks from wifi.json to Raspberry Pi known networks
+# This allows the Pi to automatically connect to these networks
 
 set -e
 
-CONFIG_FILE="./wifi_config.json"
-WPA_SUPPLICANT_FILE="/etc/wpa_supplicant/wpa_supplicant.conf"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+WIFI_CONFIG_FILE="$SCRIPT_DIR/wifi.json"
+WPA_CONFIG_FILE="/etc/wpa_supplicant/wpa_supplicant.conf"
 
-echo "=== Configuration automatique des réseaux Wi-Fi ==="
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
 
-# Vérifie que le script est exécuté en root
-if [ "$EUID" -ne 0 ]; then
-  echo "Veuillez exécuter ce script avec sudo."
-  exit 1
+# Check if running as root
+if [[ $EUID -ne 0 ]]; then
+    echo -e "${RED}Error: This script must be run as root (use sudo)${NC}"
+    exit 1
 fi
 
-# Vérifie que le fichier de configuration existe
-if [ ! -f "$CONFIG_FILE" ]; then
-  echo "Fichier de configuration introuvable : $CONFIG_FILE"
-  exit 1
+# Check if wifi.json exists
+if [[ ! -f "$WIFI_CONFIG_FILE" ]]; then
+    echo -e "${RED}Error: $WIFI_CONFIG_FILE not found${NC}"
+    exit 1
 fi
 
-# Vérifie que jq est installé
+echo -e "${YELLOW}Starting WiFi setup...${NC}"
+
+# Check if jq is installed for JSON parsing
 if ! command -v jq &> /dev/null; then
-  echo "Installation de jq (parseur JSON)..."
-  apt update -qq
-  apt install -y jq
+    echo -e "${YELLOW}jq not found. Installing jq...${NC}"
+    apt-get update
+    apt-get install -y jq
 fi
 
-# Sauvegarde de l’ancien fichier wpa_supplicant.conf
-if [ -f "$WPA_SUPPLICANT_FILE" ]; then
-  cp "$WPA_SUPPLICANT_FILE" "${WPA_SUPPLICANT_FILE}.bak"
-  echo "Sauvegarde de l’ancien fichier : ${WPA_SUPPLICANT_FILE}.bak"
+# Backup the original wpa_supplicant.conf
+if [[ -f "$WPA_CONFIG_FILE" ]]; then
+    cp "$WPA_CONFIG_FILE" "$WPA_CONFIG_FILE.backup"
+    echo -e "${GREEN}Backed up original config to $WPA_CONFIG_FILE.backup${NC}"
 fi
 
-# Création du nouveau fichier
-cat <<EOF > "$WPA_SUPPLICANT_FILE"
-ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev
-update_config=1
-country=FR
-EOF
+# Parse JSON and add networks
+networks=$(jq -r '.wifis[] | "\(.ssid)|\(.password)"' "$WIFI_CONFIG_FILE")
 
-# Lecture des réseaux Wi-Fi depuis le JSON
-echo "Lecture du fichier $CONFIG_FILE..."
-WIFI_COUNT=$(jq '.wifis | length' "$CONFIG_FILE")
+while IFS='|' read -r ssid password; do
+    # Skip empty lines
+    [[ -z "$ssid" ]] && continue
+    
+    echo -e "${YELLOW}Adding WiFi network: $ssid${NC}"
+    
+    # Check if network already exists in nmcli
+    if nmcli connection show | grep -q "^$ssid\s"; then
+        echo -e "${YELLOW}  Network '$ssid' already exists. Updating...${NC}"
+        nmcli connection delete "$ssid" 2>/dev/null || true
+    fi
+    
+    # Add the network using nmcli (NetworkManager)
+    # This works with modern Raspbian/Raspberry Pi OS
+    nmcli device wifi connect "$ssid" password "$password" --ask 2>/dev/null || \
+    nmcli connection add type wifi ifname wlan0 con-name "$ssid" ssid "$ssid" wifi-sec.key-mgmt wpa-psk wifi-sec.psk "$password" 2>/dev/null || {
+        echo -e "${RED}  Failed to add network '$ssid' with nmcli${NC}"
+        continue
+    }
+    
+    echo -e "${GREEN}  Successfully added network: $ssid${NC}"
+done <<< "$networks"
 
-for ((i=0; i<$WIFI_COUNT; i++)); do
-  SSID=$(jq -r ".wifis[$i].ssid" "$CONFIG_FILE")
-  PASSWORD=$(jq -r ".wifis[$i].password" "$CONFIG_FILE")
+# Restart networking
+echo -e "${YELLOW}Restarting networking...${NC}"
+systemctl restart networking || systemctl restart wpa_supplicant || true
 
-  # Vérifie que les valeurs ne sont pas vides
-  if [[ -z "$SSID" || -z "$PASSWORD" || "$SSID" == "null" ]]; then
-    echo "Réseau $i invalide, ignoré."
-    continue
-  fi
+echo -e "${GREEN}WiFi setup complete!${NC}"
+echo -e "${YELLOW}The Pi will now automatically connect to these networks when available.${NC}"
 
-  cat <<EOF >> "$WPA_SUPPLICANT_FILE"
-
-network={
-    ssid="$SSID"
-    psk="$PASSWORD"
-    key_mgmt=WPA-PSK
-    scan_ssid=1
-}
-EOF
-
-  echo "Réseau ajouté : $SSID"
-done
-
-# Protection du fichier
-chmod 600 "$WPA_SUPPLICANT_FILE"
-
-# Redémarrage du service Wi-Fi
-echo
-echo "Redémarrage du service wpa_supplicant..."
-systemctl restart wpa_supplicant
-systemctl enable wpa_supplicant
-
-echo
-echo "Configuration Wi-Fi terminée avec succès !"
-echo "Les réseaux définis dans $CONFIG_FILE seront utilisés automatiquement au démarrage."
+# Show configured networks
+echo -e "${YELLOW}Configured networks:${NC}"
+nmcli connection show --active 2>/dev/null | grep -E "^NAME|^TYPE" || true
