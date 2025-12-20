@@ -1,8 +1,10 @@
 output/
 logs/
+fixtures/
 .venv/
 .env/
 *.log
 *code-workspace
 *__pycache__/
 wifi_config.json
+raspberry/setup/setup_wifi.sh

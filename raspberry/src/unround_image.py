@@ -1,6 +1,6 @@
 """
-undistort_image.py
-Correction de la distorsion d'une image en utilisant les paramètres de calibration de la caméra.
+unround_image.py
+Corrects image round distortion using camera calibration parameters.
 """
 
 # ---------------------------------------------------------------------------
@@ -54,7 +54,7 @@ def process_new_camera_matrix(
     return newcameramtx
 
 
-def undistort(
+def unround(
     img: numpy.ndarray,
     camera_matrix: numpy.ndarray,
     dist_coeffs: numpy.ndarray,

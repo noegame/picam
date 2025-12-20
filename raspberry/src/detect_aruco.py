@@ -7,7 +7,7 @@
 import cv2
 import numpy as np
 import math
-from raspberry.src.my_math import *
+from raspberry.src.aruco import *
 
 # ---------------------------------------------------------------------------
 # Constantes globales
@@ -64,6 +64,7 @@ def detect_in_image(
                 "id": int(id_val),
                 "center_x": cX,
                 "center_y": cY,
+                "z": 1,
                 "angle_deg": float(corrected_angle),
                 "corners": corners,
             }
@@ -102,13 +103,15 @@ def detect_in_image(
     return results, img
 
 
-def convert_detected_tags(detected_tags: list) -> list[Point]:
+def convert_detected_tags(detected_tags: list) -> list[Aruco]:
     """
     Convertit la liste de tags détectés en une liste de points.
 
     """
     points = []
     for tag in detected_tags:
-        p = Point(tag["center_x"], tag["center_y"], tag["id"], tag["angle_deg"])
+        p = Aruco(
+            tag["center_x"], tag["center_y"], tag["z"], tag["id"], tag["angle_deg"]
+        )
         points.append(p)
     return points

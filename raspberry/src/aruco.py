@@ -9,10 +9,11 @@ import math
 # ---------------------------------------------------------------------------
 
 
-class Point:
-    def __init__(self, x, y, aruco_id, angle=None):
+class Aruco:
+    def __init__(self, x, y, z, aruco_id, angle=None):
         self.x = x
         self.y = y
+        self.z = z
         self.angle = angle
         self.aruco_id = aruco_id
 
@@ -32,12 +33,12 @@ class Point:
         }
 
 
-def distance(p1: Point, p2: Point) -> float:
+def distance(p1: Aruco, p2: Aruco) -> float:
     """Calcule la distance euclidienne entre deux points"""
     return math.sqrt((p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2)
 
 
-def find_point_by_id(points: list[Point], target_id: int):
+def find_aruco_by_id(points: list[Aruco], target_id: int):
     """
     Trouve un point par son aruco_id dans une liste de points.
 
