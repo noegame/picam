@@ -13,9 +13,8 @@ import cv2
 import numpy as np
 from pathlib import Path
 from raspberry.config.env_loader import EnvConfig
-from raspberry.src.aruco import Aruco
+from raspberry.src import aruco
 from raspberry.src import detect_aruco as detect_aruco
-from raspberry.src.aruco import find_aruco_by_id
 
 # ---------------------------------------------------------------------------
 # Main Test Code
@@ -57,10 +56,10 @@ tags_from_img, img_annotated = detect_aruco.detect_in_image(
 tags_from_img = detect_aruco.convert_detected_tags(tags_from_img)
 
 # Find source points by their ArUco IDs
-A2 = find_aruco_by_id(tags_from_img, 20)
-B2 = find_aruco_by_id(tags_from_img, 22)
-C2 = find_aruco_by_id(tags_from_img, 21)
-D2 = find_aruco_by_id(tags_from_img, 23)
+A2 = aruco.find_aruco_by_id(tags_from_img, 20)
+B2 = aruco.find_aruco_by_id(tags_from_img, 22)
+C2 = aruco.find_aruco_by_id(tags_from_img, 21)
+D2 = aruco.find_aruco_by_id(tags_from_img, 23)
 
 # Verify all markers were found
 if A2 is None or B2 is None or C2 is None or D2 is None:
@@ -71,10 +70,10 @@ if A2 is None or B2 is None or C2 is None or D2 is None:
 print(f"src points : {[(A2.x, A2.y), (B2.x, B2.y), (D2.x, D2.y), (C2.x, C2.y)]}")
 
 # Define destination points
-A1 = Aruco(53, 53, 20)  # SO
-B1 = Aruco(123, 53, 22)  # SE
-C1 = Aruco(53, 213, 21)  # NO
-D1 = Aruco(123, 213, 23)  # NE
+A1 = aruco.Aruco(53, 53, 1, 20)  # SO
+B1 = aruco.Aruco(123, 53, 1, 22)  # SE
+C1 = aruco.Aruco(53, 213, 1, 21)  # NO
+D1 = aruco.Aruco(123, 213, 1, 23)  # NE
 
 # Define source points (corners of the area to be straightened)
 src_points = np.array(
