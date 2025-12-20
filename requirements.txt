@@ -1,4 +1,5 @@
 black
+colorlog
 flask
 numpy
 opencv-python

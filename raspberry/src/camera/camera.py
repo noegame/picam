@@ -87,3 +87,13 @@ class PiCamera:
         except Exception as e:
             logger.error(f"Erreur lors de la capture: {e}")
             raise Exception(f"Erreur lors de la capture: {e}")
+
+    def close(self):
+        """Ferme et nettoie la caméra proprement."""
+        try:
+            if self.camera:
+                self.camera.stop()
+                self.camera.close()
+            logger.info("Caméra fermée correctement.")
+        except Exception as e:
+            logger.warning(f"Erreur lors de la fermeture de la caméra: {e}")

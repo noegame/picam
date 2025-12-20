@@ -8,3 +8,4 @@ fixtures/
 *__pycache__/
 wifi_config.json
 raspberry/setup/setup_wifi.sh
+raspberry/setup/wifi.json

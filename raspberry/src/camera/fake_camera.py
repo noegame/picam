@@ -101,3 +101,7 @@ class FakeCamera:
         except Exception as e:
             logger.error(f"Erreur lors de la capture simulée: {e}")
             raise Exception(f"Erreur lors de la capture simulée: {e}")
+
+    def close(self):
+        """Ferme et nettoie la fausse caméra (pas d'opération réelle nécessaire)."""
+        logger.info("Fausse caméra fermée.")

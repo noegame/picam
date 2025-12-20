@@ -5,12 +5,12 @@
 - [Documentation](#documentation)
 
 ## Description
-Dans le cadre du concours [Eurobot](https://www.eurobot.org/) et de la [Coupe de France de Robotique](https://www.coupederobotique.fr/), des robots s'affrontent lors de match sur une table de jeu. Les règles de la compétition autorisent l'utilisation d'une Zone d'Observation Déportée (ZOD) : un système équipé d'une caméra qui permet de capturer des images de la table de jeu et de transmettre des informations au robot.
+As part of the [Eurobot](https://www.eurobot.org/) competition and the [French Robotics Cup](https://www.coupederobotique.fr/), robots compete against each other in matches on a game table. The competition rules allow the use of a Remote Observation Device (ROD): a system equipped with a camera that captures images of the game table and transmits information to the robot.
 
-Ce projet de ZOD a pour objectif :
-- Reconnaissance de TAG ArUco des éléments de jeu au travers d'une caméra montée au-dessus de la table
-- Être capable de localiser précisement les éléments du jeu dans le repère du terrain 
-- Transmission des positions des éléments de jeu à un robot
+The objectives of this ROD project are:
+- Recognition of ArUco TAGs on game elements using a camera mounted above the table
+- Ability to precisely locate game elements on the playing field 
+- Transmission of game element positions to a robot
 
 ## Documentation
 - [How to set up the raspberry pi environment](docs/how-to-set-up.md)

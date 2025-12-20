@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
+
 """
-Tâche de détection ArUco
-Capture des photos et les envoie à la queue pour le streaming
-version de opencv :  4.10
+task_aruco_detection.py
+Detection and localization of ArUco tags using PiCamera2
+Sends detected tag data to a queue for
 """
 
 # ---------------------------------------------------------------------------
@@ -10,7 +11,6 @@ version de opencv :  4.10
 # ---------------------------------------------------------------------------
 
 import time
-import os
 import cv2
 import logging
 import numpy as np
@@ -18,10 +18,10 @@ import numpy as np
 from pathlib import Path
 from multiprocessing import Queue
 
-from raspberry.src import undistort_image as undistort
-from raspberry.src.camera.camera_factory import get_camera
-from raspberry.src import detect_aruco as detect_aruco
-from raspberry.src.my_math import *
+from raspberry.src import unround_image
+from raspberry.src import aruco
+from raspberry.src import detect_aruco
+from raspberry.src.camera import camera_factory
 from raspberry.config.env_loader import EnvConfig
 
 # Load environment configuration
@@ -36,10 +36,10 @@ EnvConfig()
 # C1 = Point(600, 2400, 21)
 # D1 = Point(1400, 2400, 23)
 
-A1 = Point(53, 53, 20)  # SO
-B1 = Point(123, 53, 22)  # SE
-C1 = Point(53, 213, 21)  # NO
-D1 = Point(123, 213, 23)  # NE
+A1 = aruco.Aruco(53, 53, 1, 20)  # SO
+B1 = aruco.Aruco(123, 53, 1, 22)  # SE
+C1 = aruco.Aruco(53, 213, 1, 21)  # NO
+D1 = aruco.Aruco(123, 213, 1, 23)  # NE
 
 FIXED_IDS = {20, 21, 22, 23}
 
@@ -48,195 +48,227 @@ FIXED_IDS = {20, 21, 22, 23}
 # ---------------------------------------------------------------------------
 
 
-def task_aruco_detection(queue_to_stream: Queue, queue_to_com: Queue):
+def task_aruco_detection(queue_to_ui: Queue, queue_to_com: Queue):
     """
-    Tâche de capture:
-    - prend une photo
-    - corrige la distorsion de la photo
-    - redresse la photo
-    - enregistre la photo annotée
-    - envoi le chemin de la photo à la queue pour le streaming
+    Task of
+    - take a picture with PiCamera2
+    - correct the rounding of the photo
+    - find the src points (fixed ArUco tags) in the picture to compute the perspective transform matrix
+    - find real world coordinates of all detected ArUco tags in the picture with the perspective transform matrix
+    - send the list of detected tags with their real world coordinates to the UI task via queue
     """
+
     logger = logging.getLogger("task_aruco_detection")
+    camera = None
+
     try:
+        # Load environment configuration
+        try:
+            EnvConfig()
+            image_width = EnvConfig.get_camera_width()
+            image_height = EnvConfig.get_camera_height()
+            calibration_filename = EnvConfig.get_calibration_filename()
+            image_size = (image_width, image_height)
 
-        # Prepare output directories
-        repo_root = Path(__file__).resolve().parents[2]
-        camera_pictures_dir = repo_root / "output" / "camera"
-        undistorted_pictures_dir = repo_root / "output" / "undistorted"
-        warped_pictures_dir = repo_root / "output" / "warped"
+        except Exception as e:
+            logger.error(f"Erreur lors du chargement de la configuration: {e}")
+            raise
 
-        # Create directories if they don't exist
-        camera_pictures_dir.mkdir(parents=True, exist_ok=True)
-        undistorted_pictures_dir.mkdir(parents=True, exist_ok=True)
-        warped_pictures_dir.mkdir(parents=True, exist_ok=True)
+        # Prepare directories and files
+        try:
+            repo_root = Path(__file__).resolve().parents[2]
+            camera_pictures_dir = repo_root / "output" / "camera"
+            straightened_pictures_dir = repo_root / "output" / "straightened"
+            unround_dir = repo_root / "output" / "unround"
+            config_dir = repo_root / "raspberry" / "config"
+            calibration_file = config_dir / calibration_filename
 
-        logger.info("Démarrage de la tâche de détection ArUco (capture de photos)")
+        except Exception as e:
+            logger.error(f"Error while preparing output directories: {e}")
+            raise
 
-        # Load configuration from .env
-        image_width = EnvConfig.get_camera_width()
-        image_height = EnvConfig.get_camera_height()
-        calibration_filename = EnvConfig.get_calibration_filename()
-        use_fake_camera = EnvConfig.get_use_fake_camera()
-
-        # Initialiser la caméra
-        if use_fake_camera:
-            logger.info(
-                "Mode caméra simulée (USE_FAKE_CAMERA=true) - Testing mode only"
+        # Initialize camera
+        try:
+            camera = camera_factory.get_camera(
+                w=image_width, h=image_height, allow_fallback=False, config_mode="still"
             )
-            camera_pictures_dir_temp = repo_root / "output" / "camera"
-            cam = get_camera(
-                w=image_width,
-                h=image_height,
-                use_fake_camera=True,
-                fake_camera_image_folder=camera_pictures_dir_temp,
-            )
-        else:
-            logger.info("Utilisation de la caméra réelle PiCamera2")
-            cam = get_camera(w=image_width, h=image_height, allow_fallback=False)
+        except Exception as e:
+            logger.error(f"Error while initializing the camera: {e}")
+            raise
 
-        # Trouver le fichier de calibration correspondant à la résolution
-        config_dir = repo_root / "raspberry" / "config"
-        calibration_file = config_dir / calibration_filename
-
-        # Importation des coefficients de distorsion (calibration)
-        camera_matrix, dist_coeffs = undistort.import_camera_calibration(
-            calibration_file
+        # Importation unround parameters
+        camera_matrix, dist_coeffs = unround_image.import_camera_calibration(
+            str(calibration_file)
         )
-        logger.info("Paramètres de calibration de la caméra importés avec succès")
+        logger.info("Calibration parameters imported successfully")
 
-        # Récupération de la taille de l'image
-        image_size = (image_width, image_height)
-
-        # Calcul une nouvelle matrice de caméra optimale pour la correction de la distorsion.
-        newcameramtx = undistort.process_new_camera_matrix(
+        # Process
+        newcameramtx = unround_image.process_new_camera_matrix(
             camera_matrix, dist_coeffs, image_size
         )
-        logger.info("Nouvelle matrice de caméra optimisée calculée avec succès")
+        logger.info("New optimized camera matrix calculated successfully")
 
-        # Points de destination pour le redressement
+        # Initialize ArUco detector
+        aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_50)
+        aruco_params = cv2.aruco.DetectorParameters()
+        logger.info("ArUco detector initialized successfully")
+
+        # Destination points for perspective transform (fixed positions in real world)
         dst_points = np.array(
             [[A1.x, A1.y], [B1.x, B1.y], [D1.x, D1.y], [C1.x, C1.y]], dtype=np.float32
         )
 
-        # Initialise le détecteur openCV ArUco
-        aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_50)
-        aruco_params = cv2.aruco.DetectorParameters()
-        logger.info("Détecteur ArUco initialisé avec succès")
+        end = False
+        consecutive_errors = 0
+        max_consecutive_errors = 5
 
-        # Frame rate limiter (target 10 FPS to reduce latency and queue buildup)
-        target_fps = 10
-        frame_time = 1.0 / target_fps
-        last_frame_time = time.time()
-
-        # Boucle de capture
-        while True:
+        while end is False:
+            # Take a picture
             try:
-                # Capturer une image
-                original_img, original_filepath = cam.capture_image(
+                original_img, original_filepath = camera.capture_image(
                     pictures_dir=camera_pictures_dir
                 )
+                consecutive_errors = 0  # Reset error counter on successful capture
 
             except Exception as e:
-                logger.error(f"Erreur lors de la capture: {e}")
-                time.sleep(
-                    1
-                )  # Eviter de surcharger en cas d'erreur de capture en boucle
+                consecutive_errors += 1
+                logger.error(f"Error while capturing image: {e}")
+
+                # If too many consecutive errors, restart the camera
+                if consecutive_errors >= max_consecutive_errors:
+                    logger.warning(
+                        f"Too many consecutive capture errors ({consecutive_errors}). Attempting to restart camera..."
+                    )
+                    try:
+                        if camera:
+                            camera.close()
+                    except Exception as close_err:
+                        logger.warning(f"Error closing camera: {close_err}")
+
+                    try:
+                        camera = camera_factory.get_camera(
+                            w=image_width,
+                            h=image_height,
+                            allow_fallback=False,
+                            config_mode="still",
+                        )
+                        consecutive_errors = 0
+                        logger.info("Camera restarted successfully")
+                    except Exception as restart_err:
+                        logger.error(f"Failed to restart camera: {restart_err}")
+                        raise
+
+                time.sleep(1)  # Avoid overload in case of capture error in loop
                 continue
 
+            # TODO : check if conversion is redundant
             # Convert RGB to BGR for OpenCV processing
             img_bgr = cv2.cvtColor(original_img, cv2.COLOR_RGB2BGR)
 
-            # Pré-traitement de l'image (correction de la distorsion)
-            img_distorted = undistort.undistort(
-                img_bgr, camera_matrix, dist_coeffs, newcameramtx
+            # Correct image roundness
+            img_unrounded = unround_image.unround(
+                img=img_bgr,
+                camera_matrix=camera_matrix,
+                dist_coeffs=dist_coeffs,
+                newcameramtx=newcameramtx,
             )
-            logger.debug("Distorsion de l'image corrigée avec succès")
+            logger.debug("Image roundness corrected successfully")
 
-            # Détection des tags ArUco fixes
+            # Detect ArUco markers sources points
             tags_from_img, img_annotated = detect_aruco.detect_in_image(
-                img_distorted, aruco_dict, None, aruco_params, draw=False
+                img_unrounded, aruco_dict, None, aruco_params, draw=False
             )
 
-            # artifice provisoire pour convertir la liste de tags détectés en liste de Point
+            # Temporarily convert detected tags to Aruco objects (should be done inside detect_aruco)
             tags_from_img = detect_aruco.convert_detected_tags(tags_from_img)
 
-            # Récupère les coordonnées des 4 points fixes
-            A2 = find_point_by_id(tags_from_img, 20)
-            B2 = find_point_by_id(tags_from_img, 22)
-            C2 = find_point_by_id(tags_from_img, 21)
-            D2 = find_point_by_id(tags_from_img, 23)
+            # Find source points by their ArUco IDs
+            a2 = aruco.find_aruco_by_id(tags_from_img, 20)
+            b2 = aruco.find_aruco_by_id(tags_from_img, 22)
+            c2 = aruco.find_aruco_by_id(tags_from_img, 21)
+            d2 = aruco.find_aruco_by_id(tags_from_img, 23)
 
-            # Encode directly to JPEG for efficient transmission (quality 85 for good balance)
-            _, jpeg_bytes = cv2.imencode(
-                ".jpg", img_distorted, [cv2.IMWRITE_JPEG_QUALITY, 85]
-            )
-            # Convert numpy array to bytes
-            jpeg_bytes = jpeg_bytes.tobytes()
+            # Verify all reference markers were found
+            if a2 is None or b2 is None or c2 is None or d2 is None:
+                logger.info(f"Missing reference aruco markers in the image")
 
-            if not all([A2, B2, C2, D2]):
-                missing = [
-                    str(id)
-                    for id in [20, 22, 21, 23]
-                    if not find_point_by_id(tags_from_img, id)
-                ]
-                logger.warning(f"Tags fixes {', '.join(missing)} non trouvé(s)")
+                # Use previous valid matrix if available
+                # If no valid matrix yet, skip this frame
+                if "matrix" not in locals():
+                    logger.warning(
+                        "Perspective transformation matrix not yet available, skipping frame"
+                    )
+                    time.sleep(1)  # Avoid overload in case of repeated missing markers
+                    continue
+                continue
 
-                data_for_queue = {
-                    "undistorted_img": jpeg_bytes,
-                    "img_width": image_width,
-                    "img_height": image_height,
-                    "aruco_tags": tags_from_img,
-                }
             else:
-                # Redressement de l'image
-                # Ordonner les points dans le sens horaire pour éviter les rotations aléatoires
-                # Ordre: NO (20), NE (22), SE (23), SO (21)
+                logger.info("All reference aruco markers found")
+                # Define source points (corners of the area to be straightened in image coordinates)
                 src_points = np.array(
-                    [[A2.x, A2.y], [B2.x, B2.y], [D2.x, D2.y], [C2.x, C2.y]],
+                    [[a2.x, a2.y], [b2.x, b2.y], [d2.x, d2.y], [c2.x, c2.y]],
                     dtype=np.float32,
                 )
 
-                # Matrice de transformation affine
-                matrix = cv2.getPerspectiveTransform(src_points, dst_points)
-
-                w, h = img_distorted.shape[:2]
-                logger.debug(f" w : {w} h : {h} ")
-                transformed_img = cv2.warpPerspective(img_distorted, matrix, (w, h))
-
-                # Encode distorted image to JPEG for efficient transmission
-                _, jpeg_bytes_distorted = cv2.imencode(
-                    ".jpg", img_distorted, [cv2.IMWRITE_JPEG_QUALITY, 85]
+                # Define destination points (where the corners should map to in real world coordinates)
+                dst_points = np.array(
+                    [[A1.x, A1.y], [B1.x, B1.y], [D1.x, D1.y], [C1.x, C1.y]],
+                    dtype=np.float32,
                 )
-                jpeg_bytes_distorted = jpeg_bytes_distorted.tobytes()
 
-                data_for_queue = {
-                    "undistorted_img": jpeg_bytes_distorted,
-                    "img_width": image_width,
-                    "img_height": image_height,
-                    "aruco_tags": tags_from_img,
-                }
+            # Calculate the perspective transformation matrix
+            matrix = cv2.getPerspectiveTransform(src_points, dst_points)
 
-                # TODO : détecter les tags dynamiques et calculer leur position réelle à partir de l'image redressée
-                # Detect dynamic tags (excluding fixed markers)
-                dynamic_tags = [
-                    tag for tag in tags_from_img if tag.aruco_id not in FIXED_IDS
-                ]
-                if dynamic_tags:
-                    logger.info(
-                        f"Tags dynamiques détectés: {[tag.aruco_id for tag in dynamic_tags]}"
-                    )
-                    # data_for_queue["dynamic_tags"] = dynamic_tags
+            # Convert detected tags image coordinates to real world coordinates
+            tags_from_real_world = []
+            for tag in tags_from_img:
+                # Create homogeneous coordinate [x, y, z]
+                img_point = np.array([tag.x, tag.y, tag.z], dtype=np.float32).reshape(
+                    3, 1
+                )
 
-            # Frame rate limiting: maintain target FPS
-            elapsed = time.time() - last_frame_time
-            sleep_time = frame_time - elapsed
-            if sleep_time > 0:
-                time.sleep(sleep_time)
-            last_frame_time = time.time()
+                # Apply perspective transformation matrix to convert to real world coordinates
+                real_world_point = matrix @ img_point
 
-            queue_to_stream.put(data_for_queue)
+                # Normalize homogeneous coordinates
+                real_x = real_world_point[0, 0] / real_world_point[2, 0]
+                real_y = real_world_point[1, 0] / real_world_point[2, 0]
+
+                # Create new Aruco object with transformed coordinates
+                transformed_tag = aruco.Aruco(
+                    real_x, real_y, tag.z, tag.aruco_id, tag.angle
+                )
+                tags_from_real_world.append(transformed_tag)
+
+                logger.debug(
+                    f"Tag ID {tag.aruco_id}: Image coords ({tag.x:.2f}, {tag.y:.2f}) -> Real world coords ({real_x:.2f}, {real_y:.2f})"
+                )
+
+            # Send detected tags to UI task
+            try:
+                queue_to_ui.put(tags_from_real_world)
+                logger.info(
+                    f"Sent {len(tags_from_real_world)} detected tags to UI task via queue"
+                )
+            except Exception as e:
+                logger.error(f"Error while sending detected tags to UI task: {e}")
+
+            # Send detected tags to Communication task
+            # TODO
+
+            logger.info(
+                "Aruco detection iteration complete, waiting before next capture..."
+            )
+            time.sleep(1)  # Adjust delay as needed to control capture rate
 
     except Exception as e:
         logger.error(f"Erreur fatale dans la tâche ArUco: {e}")
         raise
+    finally:
+        # Ensure camera is properly closed on exit
+        if camera:
+            try:
+                camera.close()
+                logger.info("Camera closed during shutdown")
+            except Exception as e:
+                logger.warning(f"Error closing camera during shutdown: {e}")
