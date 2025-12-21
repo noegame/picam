@@ -50,6 +50,7 @@ def calibrate_from_images(image_paths, pattern_size, square_size):
         found, corners = cv2.findChessboardCorners(
             gray,
             (cols, rows),
+            None,
             cv2.CALIB_CB_ADAPTIVE_THRESH + cv2.CALIB_CB_NORMALIZE_IMAGE,
         )
         if found:
@@ -68,15 +69,18 @@ def calibrate_from_images(image_paths, pattern_size, square_size):
         )
 
     # Calibration
-    img_shape = cv2.cvtColor(cv2.imread(used_images[0]), cv2.COLOR_BGR2GRAY).shape[
-        ::-1
-    ]  # (w,h)
+    first_img = cv2.imread(used_images[0], cv2.IMREAD_COLOR)
+    if first_img is None:
+        raise RuntimeError(f"Cannot read calibration image {used_images[0]}")
+    gray_img = cv2.cvtColor(first_img, cv2.COLOR_BGR2GRAY)
+    img_shape = gray_img.shape[::-1]  # (w,h)
+
     ret, camera_matrix, dist_coeffs, rvecs, tvecs = cv2.calibrateCamera(
         objpoints,
         imgpoints,
         img_shape,
-        None,
-        None,
+        None,  # type: ignore
+        None,  # type: ignore
         flags=cv2.CALIB_RATIONAL_MODEL,  # includes k4,k5,k6
     )
 
@@ -86,7 +90,10 @@ def calibrate_from_images(image_paths, pattern_size, square_size):
         imgpoints2, _ = cv2.projectPoints(
             objpoints[i], rvecs[i], tvecs[i], camera_matrix, dist_coeffs
         )
-        err = cv2.norm(imgpoints[i], imgpoints2, cv2.NORM_L2) / len(imgpoints2)
+        # Convert to numpy arrays if needed
+        pts1 = np.asarray(imgpoints[i]).reshape(-1, 2)
+        pts2 = np.asarray(imgpoints2).reshape(-1, 2)
+        err = cv2.norm(pts1, pts2, cv2.NORM_L2) / len(pts1)
         total_error += err
     mean_error = total_error / len(objpoints)
 
@@ -147,7 +154,7 @@ def main():
     # Créer le nom du fichier avec la résolution
     img_width, img_height = result["image_size"]
     output_filename = f"camera_calibration_{img_width}x{img_height}.npz"
-    output_file = repo_root / "raspberry" / "config" / output_filename
+    output_file = repo_root / "raspberry" / "vision_python" / "config" / output_filename
 
     np.savez(
         str(output_file),

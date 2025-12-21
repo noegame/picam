@@ -12,6 +12,8 @@ The objectives of this ROD project are:
 - Ability to precisely locate game elements on the playing field 
 - Transmission of game element positions to a robot
 
+This repository is a simple proof of concept of such a ROD using a Raspberry Pi and a Pi Camera. It includes code for camera calibration, image processing, ArUco tag detection, and position calculation. The proof of concept is written in Python and in C and use openCV libraries.
+
 ## Documentation
 - [How to set up the raspberry pi environment](docs/how-to-set-up.md)
 - [How to connect to the raspberry pi](docs/how-to-connect.md)

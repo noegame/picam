@@ -20,8 +20,8 @@ import sys
 from pathlib import Path
 from datetime import datetime
 
-from raspberry.src.camera.camera_factory import get_camera
-from raspberry.config.env_loader import EnvConfig
+from vision_python.src.camera.camera_factory import get_camera
+from vision_python.config.env_loader import EnvConfig
 
 # Load environment configuration
 EnvConfig()
@@ -100,8 +100,7 @@ def main():
     finally:
         if cam is not None:
             try:
-                cam.camera.stop()
-                cam.camera.close()
+                cam.close()
             except Exception as e:
                 logger.debug(f"Erreur lors de l'arrêt de la caméra : {e}")
         logger.info("Caméra arrêtée.")

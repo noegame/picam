@@ -1,3 +1,0 @@
-"""
-PiCam Tools Module
-"""

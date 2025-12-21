@@ -1,3 +1,0 @@
-"""
-PiCam Raspberry Pi Module
-"""
