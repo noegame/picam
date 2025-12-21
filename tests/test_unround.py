@@ -12,7 +12,7 @@ Corrects image round distortion using camera calibration parameters.
 import cv2
 from pathlib import Path
 from raspberry.config.env_loader import EnvConfig
-from raspberry.src import unround_image as unround_image
+from raspberry.src import unround_img as unround_img
 
 # ---------------------------------------------------------------------------
 # Main Test Code
@@ -36,7 +36,7 @@ image_path = "tests/fixtures/camera/image.jpg"
 # Import coefficients for unrounding
 config_dir = repo_root / "raspberry" / "config"
 calibration_file = config_dir / calibration_filename
-camera_matrix, dist_coeffs = unround_image.import_camera_calibration(
+camera_matrix, dist_coeffs = unround_img.import_camera_calibration(
     str(calibration_file)
 )
 
@@ -44,7 +44,7 @@ camera_matrix, dist_coeffs = unround_image.import_camera_calibration(
 image_size = (image_width, image_height)
 
 # Calculate a new optimal camera matrix for distortion correction.
-newcameramtx = unround_image.process_new_camera_matrix(
+newcameramtx = unround_img.process_new_camera_matrix(
     camera_matrix, dist_coeffs, image_size
 )
 
@@ -54,7 +54,7 @@ if img is None:
     raise ValueError(f"Failed to load image from {image_path}")
 
 # Unround the image
-img_unrounded = unround_image.unround(
+img_unrounded = unround_img.unround(
     img=img,
     camera_matrix=camera_matrix,
     dist_coeffs=dist_coeffs,

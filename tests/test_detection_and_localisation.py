@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 """
-test_detection_and_location.py
+test_detection_and_localisation.py
 Detects ArUco markers in images and process real world coordinates.
 """
 
@@ -14,7 +14,7 @@ import numpy as np
 from pathlib import Path
 from raspberry.src import aruco as aruco
 from raspberry.src import detect_aruco as detect_aruco
-from raspberry.src import unround_image as unround_image
+from raspberry.src import unround_img as unround_img
 from raspberry.config.env_loader import EnvConfig
 
 # ---------------------------------------------------------------------------
@@ -57,17 +57,16 @@ def main():
     repo_root = Path(__file__).resolve().parents[1]
     config_dir = repo_root / "raspberry" / "config"
     calibration_file = config_dir / calibration_filename
-    camera_matrix, dist_coeffs = unround_image.import_camera_calibration(
+    camera_matrix, dist_coeffs = unround_img.import_camera_calibration(
         str(calibration_file)
     )
     image_size = (image_width, image_height)
-    newcameramtx = unround_image.process_new_camera_matrix(
+    newcameramtx = unround_img.process_new_camera_matrix(
         camera_matrix, dist_coeffs, image_size
     )
 
     # Initialize ArUco detector
-    aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_50)
-    aruco_params = cv2.aruco.DetectorParameters()
+    aruco_detector = detect_aruco.init_aruco_detector()
 
     # Expected point for tag 36 (in real world coordinates)
     expected_tag_36 = aruco.Aruco(
@@ -87,7 +86,7 @@ def main():
             continue
 
         # Unround the image before detection
-        img = unround_image.unround(
+        img = unround_img.unround(
             img=img,
             camera_matrix=camera_matrix,
             dist_coeffs=dist_coeffs,
@@ -95,12 +94,7 @@ def main():
         )
 
         # Detect ArUco markers sources points
-        tags_from_img, img_annotated = detect_aruco.detect_in_image(
-            img, aruco_dict, None, aruco_params, draw=False
-        )
-
-        # Temporarily convert detected tags to Aruco objects (should be done inside detect_aruco)
-        tags_from_img = detect_aruco.convert_detected_tags(tags_from_img)
+        tags_from_img = detect_aruco.detect_aruco_in_img(img, aruco_detector)
 
         # Find source points by their ArUco IDs
         A2 = aruco.find_aruco_by_id(tags_from_img, 20)

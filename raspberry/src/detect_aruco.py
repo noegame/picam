@@ -1,12 +1,9 @@
-# version of opencv :  4.6.0+dfsg-12
-
 # ---------------------------------------------------------------------------
 # Imports
 # ---------------------------------------------------------------------------
 
 import cv2
 import numpy as np
-import math
 from raspberry.src.aruco import *
 
 # ---------------------------------------------------------------------------
@@ -18,34 +15,50 @@ from raspberry.src.aruco import *
 # ---------------------------------------------------------------------------
 
 
-def detect_in_image(
-    img: np.ndarray,
-    aruco_dic,
-    detector,
-    aruco_params,
-    draw=False,
-    aruco_descriptions=None,
-):
+def init_aruco_detector() -> cv2.aruco.ArucoDetector:
     """
-    Détecte les tags ArUco dans une image et ajoute leurs descriptions si disponibles.
+    Initialize and return an ArUco detector with default parameters.
+    version of opencv :  4.6.0+dfsg-12
+    Returns:
+        aruco_detector: An cv2.aruco.ArucoDetector object initialized with default parameters.
+
     """
+    aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_50)
+    aruco_params = cv2.aruco.DetectorParameters()
+    aruco_detector = cv2.aruco.ArucoDetector(aruco_dict, aruco_params)
+    return aruco_detector
+
+
+def detect_aruco_in_img(
+    img: np.ndarray, aruco_detector: cv2.aruco.ArucoDetector
+) -> list[Aruco]:
+    """
+    Detect ArUco markers in an image.
+    version of opencv :  4.6.0+dfsg-12
+
+    Args:
+        img: Image in which to detect ArUco markers.
+        aruco_dic: Predefined ArUco dictionary from OpenCV.
+        aruco_params: ArUco detector parameters.
+
+    Returns:
+        list: A list of detected Aruco objects.
+
+    """
+    # Convert image to grayscale
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
-    # Détection
-    if detector is not None:
-        corners_list, ids, rejected = detector.detectMarkers(gray)
-    else:
-        # Utiliser la nouvelle API OpenCV 4.7+
-        detector = cv2.aruco.ArucoDetector(aruco_dic, aruco_params)
-        corners_list, ids, rejected = detector.detectMarkers(gray)
+    # Detection
+    corners_list, ids, rejected = aruco_detector.detectMarkers(gray)
 
-    results = []
+    detected_markers = []
     if ids is None or len(ids) == 0:
-        return results, img
+        return detected_markers
 
+    #
     ids = ids.flatten()
     for corners, id_val in zip(corners_list, ids):
-        corners = corners.reshape((4, 2))
+        corners = corners.reshape((4, 2)).astype(np.float32)
         cX = float(np.mean(corners[:, 0]))
         cY = float(np.mean(corners[:, 1]))
 
@@ -59,59 +72,57 @@ def detect_in_image(
         if corrected_angle > 180:
             corrected_angle -= 360
 
-        results.append(
-            {
-                "id": int(id_val),
-                "center_x": cX,
-                "center_y": cY,
-                "z": 1,
-                "angle_deg": float(corrected_angle),
-                "corners": corners,
-            }
+        a = Aruco(
+            cX,
+            cY,
+            1,
+            id_val,
+            float(corrected_angle),
         )
+        detected_markers.append(a)
 
-        if draw:
-            int_corners = corners.astype(int)
-            cv2.polylines(
-                img, [int_corners], isClosed=True, color=(0, 255, 0), thickness=2
-            )
-            cv2.circle(img, (int(round(cX)), int(round(cY))), 4, (255, 0, 0), -1)
-
-            # Affiche l'ID et la description si disponible
-            label = f"ID:{id_val}"
-            if aruco_descriptions and str(id_val) in aruco_descriptions:
-                label += f" - {aruco_descriptions[str(id_val)]}"
-
-            cv2.putText(
-                img,
-                label,
-                (int(cX) + 10, int(cY) - 10),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.6,
-                (0, 255, 255),
-                2,
-            )
-
-            L = max(40, int(min(img.shape[0], img.shape[1]) * 0.05))
-            theta = math.radians(corrected_angle)
-            dx = L * math.cos(theta)
-            dy = -L * math.sin(theta)
-            pt1 = (int(round(cX)), int(round(cY)))
-            pt2 = (int(round(cX + dx)), int(round(cY + dy)))
-            cv2.arrowedLine(img, pt1, pt2, (0, 0, 255), 2, tipLength=0.2)
-
-    return results, img
+    return detected_markers
 
 
-def convert_detected_tags(detected_tags: list) -> list[Aruco]:
+def create_annotated_image(
+    img: np.ndarray,
+    detected_markers: list[Aruco],
+) -> np.ndarray:
     """
-    Convertit la liste de tags détectés en une liste de points.
+    Create an annotated image with detected ArUco markers.
+    version of opencv :  4.6.0+dfsg-12
+
+    Args:
+        img: Original image.
+        detected_markers: List of detected Aruco objects.
+
+    Returns:
+        Annotated image with detected markers drawn.
 
     """
-    points = []
-    for tag in detected_tags:
-        p = Aruco(
-            tag["center_x"], tag["center_y"], tag["z"], tag["id"], tag["angle_deg"]
+    annotated_img = img.copy()
+    if len(detected_markers) == 0:
+        return annotated_img
+
+    corners_list = []
+    ids = []
+    for marker in detected_markers:
+        corners = np.array(
+            [
+                [marker.x - 10, marker.y - 10],
+                [marker.x + 10, marker.y - 10],
+                [marker.x + 10, marker.y + 10],
+                [marker.x - 10, marker.y + 10],
+            ],
+            dtype=np.float32,
         )
-        points.append(p)
-    return points
+        # Reshape to (4, 1, 2) format required by drawDetectedMarkers
+        corners = corners.reshape((4, 1, 2))
+        corners_list.append(corners)
+        ids.append(marker.aruco_id)
+
+    ids = np.array(ids, dtype=np.int32)
+
+    annotated_img = cv2.aruco.drawDetectedMarkers(annotated_img, corners_list, ids)
+
+    return annotated_img

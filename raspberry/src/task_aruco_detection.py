@@ -18,7 +18,7 @@ import numpy as np
 from pathlib import Path
 from multiprocessing import Queue
 
-from raspberry.src import unround_image
+from raspberry.src import unround_img
 from raspberry.src import aruco
 from raspberry.src import detect_aruco
 from raspberry.src.camera import camera_factory
@@ -97,20 +97,19 @@ def task_aruco_detection(queue_to_ui: Queue, queue_to_com: Queue):
             raise
 
         # Importation unround parameters
-        camera_matrix, dist_coeffs = unround_image.import_camera_calibration(
+        camera_matrix, dist_coeffs = unround_img.import_camera_calibration(
             str(calibration_file)
         )
         logger.info("Calibration parameters imported successfully")
 
         # Process
-        newcameramtx = unround_image.process_new_camera_matrix(
+        newcameramtx = unround_img.process_new_camera_matrix(
             camera_matrix, dist_coeffs, image_size
         )
         logger.info("New optimized camera matrix calculated successfully")
 
         # Initialize ArUco detector
-        aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_50)
-        aruco_params = cv2.aruco.DetectorParameters()
+        aruco_detector = detect_aruco.init_aruco_detector()
         logger.info("ArUco detector initialized successfully")
 
         # Destination points for perspective transform (fixed positions in real world)
@@ -166,7 +165,7 @@ def task_aruco_detection(queue_to_ui: Queue, queue_to_com: Queue):
             img_bgr = cv2.cvtColor(original_img, cv2.COLOR_RGB2BGR)
 
             # Correct image roundness
-            img_unrounded = unround_image.unround(
+            img_unrounded = unround_img.unround(
                 img=img_bgr,
                 camera_matrix=camera_matrix,
                 dist_coeffs=dist_coeffs,
@@ -175,12 +174,9 @@ def task_aruco_detection(queue_to_ui: Queue, queue_to_com: Queue):
             logger.debug("Image roundness corrected successfully")
 
             # Detect ArUco markers sources points
-            tags_from_img, img_annotated = detect_aruco.detect_in_image(
-                img_unrounded, aruco_dict, None, aruco_params, draw=False
+            tags_from_img = detect_aruco.detect_aruco_in_img(
+                img_unrounded, aruco_detector
             )
-
-            # Temporarily convert detected tags to Aruco objects (should be done inside detect_aruco)
-            tags_from_img = detect_aruco.convert_detected_tags(tags_from_img)
 
             # Find source points by their ArUco IDs
             a2 = aruco.find_aruco_by_id(tags_from_img, 20)
