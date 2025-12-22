@@ -1,61 +1,43 @@
 #!/usr/bin/env python3
 """
-Factory pour créer et retourner une instance de caméra (réelle ou simulée).
+camera_factory.py
+Factory module to get camera instances
 """
 
-from pathlib import Path
-from typing import Optional
 import logging
+from vision_python.config import config
 
 logger = logging.getLogger("camera_factory")
 
 
-def get_camera(
-    w: int,
-    h: int,
-    use_fake_camera: bool = False,
-    config_mode: str = "preview",
-    fake_camera_image_folder: Optional[Path] = None,
-    allow_fallback: bool = True,
-):
+def get_camera(w: int, h: int, camera: config.CameraMode, camera_param=None):
     """
     Retourne une instance de caméra.
 
-    :param w: Largeur de l'image.
-    :param h: Hauteur de l'image.
-    :param use_fake_camera: Si True, retourne une instance de FakeCamera.
-    :param config_mode: Mode de configuration - "preview" (streaming) ou "still" (captures uniques).
-    :param fake_camera_image_folder: Dossier contenant les images pour la FakeCamera.
-    :param allow_fallback: Si True et que la caméra réelle échoue, bascule automatiquement vers FakeCamera.
-    :return: Une instance de caméra (PiCamera ou FakeCamera).
+    :param w: img width.
+    :param h: img height.
+    :param camera: type of camera to use (raspberry, computer, emulated).
+    :param camera_param: paramètre spécifique à la caméra :
+        - For Raspberry Pi camera: mode de configuration (ex: "still", "video")
+        - For emulated camera: path to the image folder
+    :return: A camera instance (PiCamera or FakeCamera).
     """
-    if use_fake_camera:
-        from .fake_camera import FakeCamera
+    if camera == config.CameraMode.EMULATED:
+        from .emulated_camera import EmulatedCamera
 
-        if fake_camera_image_folder is None:
+        if camera_param is None:
             raise ValueError(
-                "Le dossier d'images pour la fausse caméra doit être spécifié."
+                "Le dossier d'images pour la fausse caméra doit être spécifié via camera_param."
             )
-        return FakeCamera(w=w, h=h, image_folder=fake_camera_image_folder)
+        return EmulatedCamera(w=w, h=h, image_folder=camera_param)
     else:
         from .camera import PiCamera
+
+        # Pour Raspberry Pi, camera_param peut être "still" ou autre mode
+        config_mode = camera_param if camera_param is not None else "still"
 
         try:
             return PiCamera(w=w, h=h, config_mode=config_mode)
         except (ImportError, Exception) as e:
-            if allow_fallback:
-                logger.warning(
-                    f"Impossible d'initialiser la caméra réelle: {e}. "
-                    f"Basculement vers la fausse caméra..."
-                )
-                if fake_camera_image_folder is None:
-                    raise ValueError(
-                        "La caméra réelle n'est pas disponible et aucun dossier d'images pour "
-                        "la fausse caméra n'a été spécifié. Spécifiez 'fake_camera_image_folder' "
-                        "ou installez libcamera sur le système."
-                    )
-                from .fake_camera import FakeCamera
-
-                return FakeCamera(w=w, h=h, image_folder=fake_camera_image_folder)
-            else:
-                raise
+            logger.error(f"Unable to initialize the real camera: {e}. ")
+            raise

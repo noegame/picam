@@ -15,27 +15,27 @@ import cv2
 import logging
 import numpy as np
 
-from pathlib import Path
-
-from vision_python.src import unround_img
 from vision_python.src import aruco
 from vision_python.src import detect_aruco
+from vision_python.src import unround_img
 from vision_python.src.camera import camera_factory
-from vision_python.config.env_loader import EnvConfig
+from vision_python.config import config
+from vision_python.config import tags_informations
+
 
 # ---------------------------------------------------------------------------
 # Constantes globales
 # ---------------------------------------------------------------------------
 
-# A1 = Point(600, 600, 20)
-# B1 = Point(1400, 600, 22)
-# C1 = Point(600, 2400, 21)
-# D1 = Point(1400, 2400, 23)
+A1 = aruco.Aruco(600, 600, 1, 20)
+B1 = aruco.Aruco(1400, 600, 1, 22)
+C1 = aruco.Aruco(600, 2400, 1, 21)
+D1 = aruco.Aruco(1400, 2400, 1, 23)
 
-A1 = aruco.Aruco(53, 53, 1, 20)  # SO
-B1 = aruco.Aruco(123, 53, 1, 22)  # SE
-C1 = aruco.Aruco(53, 213, 1, 21)  # NO
-D1 = aruco.Aruco(123, 213, 1, 23)  # NE
+# A1 = aruco.Aruco(53, 53, 1, 20)  # SO
+# B1 = aruco.Aruco(123, 53, 1, 22)  # SE
+# C1 = aruco.Aruco(53, 213, 1, 21)  # NO
+# D1 = aruco.Aruco(123, 213, 1, 23)  # NE
 
 FIXED_IDS = {20, 21, 22, 23}
 
@@ -60,11 +60,9 @@ def task_aruco_detection() -> None:
     try:
         # Load environment configuration
         try:
-            EnvConfig()
-            image_width = EnvConfig.get_camera_width()
-            image_height = EnvConfig.get_camera_height()
-            calibration_filename = EnvConfig.get_calibration_filename()
-            image_size = (image_width, image_height)
+            img_width, img_height = config.get_camera_resolution()
+            image_size = (img_width, img_height)
+            aruco_smiley = tags_informations.get_aruco_smiley_dict()
 
         except Exception as e:
             logger.error(f"Erreur lors du chargement de la configuration: {e}")
@@ -72,21 +70,17 @@ def task_aruco_detection() -> None:
 
         # Prepare directories and files
         try:
-            repo_root = Path(__file__).resolve().parents[2]
-            camera_pictures_dir = repo_root / "output" / "camera"
-            straightened_pictures_dir = repo_root / "output" / "straightened"
-            unround_dir = repo_root / "output" / "unround"
-            config_dir = repo_root / "vision_python" / "config"
-            calibration_file = config_dir / calibration_filename
+            camera_pictures_dir = config.get_camera_directory()
+            calibration_file = config.get_calibration_file_path()
 
         except Exception as e:
-            logger.error(f"Error while preparing output directories: {e}")
+            logger.error(f"Error while preparing input/output directories: {e}")
             raise
 
         # Initialize camera
         try:
             camera = camera_factory.get_camera(
-                w=image_width, h=image_height, allow_fallback=False, config_mode="still"
+                w=img_width, h=img_height, allow_fallback=False, config_mode="still"
             )
         except Exception as e:
             logger.error(f"Error while initializing the camera: {e}")
@@ -142,8 +136,8 @@ def task_aruco_detection() -> None:
 
                     try:
                         camera = camera_factory.get_camera(
-                            w=image_width,
-                            h=image_height,
+                            w=img_width,
+                            h=img_height,
                             allow_fallback=False,
                             config_mode="still",
                         )
@@ -167,6 +161,7 @@ def task_aruco_detection() -> None:
                 dist_coeffs=dist_coeffs,
                 newcameramtx=newcameramtx,
             )
+            img_unrounded = img_bgr
             logger.debug("Image roundness corrected successfully")
 
             # Detect ArUco markers sources points
@@ -192,7 +187,6 @@ def task_aruco_detection() -> None:
                     )
                     time.sleep(1)  # Avoid overload in case of repeated missing markers
                     continue
-                continue
 
             else:
                 logger.info("All reference aruco markers found")
@@ -233,7 +227,7 @@ def task_aruco_detection() -> None:
                 tags_from_real_world.append(transformed_tag)
 
                 logger.info(
-                    f"Tag ID {tag.aruco_id}: Image coords ({tag.x:.2f}, {tag.y:.2f}) -> Real world coords ({real_x:.2f}, {real_y:.2f})"
+                    f"{aruco_smiley.get(tag.aruco_id, '')} Tag ID {tag.aruco_id}: Image coords ({tag.x:.2f}, {tag.y:.2f}) -> Real world coords ({real_x:.2f}, {real_y:.2f})"
                 )
 
             logger.info(
@@ -243,7 +237,7 @@ def task_aruco_detection() -> None:
                 "========================================================================"
             )
 
-            time.sleep(1)  # Adjust delay as needed to control capture rate
+            time.sleep(0.1)  # Adjust delay as needed to control capture rate
 
     except Exception as e:
         logger.error(f"Erreur fatale dans la tâche ArUco: {e}")

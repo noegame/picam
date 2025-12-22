@@ -11,8 +11,7 @@ Applies perspective transformation to straighten images.
 
 import cv2
 import numpy as np
-from pathlib import Path
-from vision_python.config.env_loader import EnvConfig
+from vision_python.config import config
 from vision_python.src import aruco
 from vision_python.src import detect_aruco
 
@@ -20,28 +19,30 @@ from vision_python.src import detect_aruco
 # Main Test Code
 # ---------------------------------------------------------------------------
 
-# Load environment configuration
-EnvConfig()
-
-# Load configuration from .env
-image_width = EnvConfig.get_camera_width()
-image_height = EnvConfig.get_camera_height()
-calibration_filename = EnvConfig.get_calibration_filename()
+# Load configuration parameters
+image_width = config.CAMERA_WIDTH
+image_height = config.CAMERA_HEIGHT
 
 # Prepare input/output directories
-repo_root = Path(__file__).resolve().parents[1]
-camera_pictures_dir = repo_root / "tests" / "fixtures" / "camera"
-unrounded_pictures_dir = repo_root / "tests" / "fixtures" / "unrounded"
-straightened_pictures_dir = repo_root / "tests" / "fixtures" / "straightened"
-image_path = camera_pictures_dir / "image.jpg"
+input_img_path = (
+    config.RASPBERRY_DIR
+    / "vision_python"
+    / "tests"
+    / "fixtures"
+    / "camera"
+    / "image.jpg"
+)
+straightened_img_path = (
+    config.RASPBERRY_DIR / "vision_python" / "tests" / "fixtures" / "straightened.jpg"
+)
 
 # Getting image size
 image_size = (image_width, image_height)
 
 # Load image
-img = cv2.imread(str(image_path))
+img = cv2.imread(str(input_img_path))
 if img is None:
-    raise ValueError(f"Failed to load image from {image_path}")
+    raise ValueError(f"Failed to load image from {input_img_path}")
 
 # Initialize ArUco detector
 aruco_detector = detect_aruco.init_aruco_detector()
@@ -89,6 +90,5 @@ print(f"  w : {w} h : {h} ")
 straightened_img = cv2.warpPerspective(img, matrix, (w, h))
 
 # Save images for verification
-straightened_picture_path = straightened_pictures_dir / "straightened.jpg"
-cv2.imwrite(str(straightened_picture_path), straightened_img)
-print(f"Images saved to {straightened_picture_path}")
+cv2.imwrite(str(straightened_img_path), straightened_img)
+print(f"Images saved to {straightened_img_path}")

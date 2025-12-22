@@ -11,7 +11,7 @@ Detects ArUco markers in images.
 
 import cv2
 from pathlib import Path
-from vision_python.config.env_loader import EnvConfig
+from vision_python.config import config
 from vision_python.src import detect_aruco
 
 # ---------------------------------------------------------------------------
@@ -24,20 +24,19 @@ FIXED_IDS = {20, 21, 22, 23}
 # Main Test Code
 # ---------------------------------------------------------------------------
 
-# Load environment configuration
-EnvConfig()
-
-# Load configuration from .env
-image_width = EnvConfig.get_camera_width()
-image_height = EnvConfig.get_camera_height()
-calibration_filename = EnvConfig.get_calibration_filename()
+# Load configuration parameters
+image_width = config.CAMERA_WIDTH
+image_height = config.CAMERA_HEIGHT
 
 # Prepare input/output directories
-repo_root = Path(__file__).resolve().parents[1]
-camera_pictures_dir = repo_root / "tests" / "fixtures" / "camera"
-unrounded_pictures_dir = repo_root / "tests" / "fixtures" / "unrounded"
-straightened_pictures_dir = repo_root / "tests" / "fixtures" / "straightened"
-image_path = camera_pictures_dir / "image.jpg"
+image_path = (
+    config.RASPBERRY_DIR
+    / "vision_python"
+    / "tests"
+    / "fixtures"
+    / "camera"
+    / "image.jpg"
+)
 
 # Getting image size
 image_size = (image_width, image_height)

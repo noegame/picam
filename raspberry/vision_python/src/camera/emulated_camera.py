@@ -18,20 +18,17 @@ import shutil
 # Classe
 # ---------------------------------------------------------------------------
 
-logger = logging.getLogger("fake_camera")
+logger = logging.getLogger("emulated_camera")
 
 
-class FakeCamera:
+class EmulatedCamera:
     """
-    Une fausse caméra qui lit des images depuis un dossier au lieu d'une vraie caméra.
-    L'API est compatible avec la classe PiCamera.
+    An emulated camera that reads images from a specified folder.
     """
 
     def __init__(self, w: int, h: int, image_folder: Path):
-        """Initialise la fausse caméra."""
-        logger.info(
-            f"Initialisation de la fausse caméra depuis le dossier: {image_folder}"
-        )
+        """Initializes the emulated camera."""
+        logger.info(f"Initializing the emulated camera from folder: {image_folder}")
         self.width = w
         self.height = h
         self.image_folder = image_folder

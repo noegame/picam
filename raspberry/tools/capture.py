@@ -1,27 +1,15 @@
 #!/usr/bin/env python3
-"""
-Script simple pour capturer des images pour la calibration de la caméra.
-
-Ce script utilise la configuration pour obtenir la résolution,
-initialise la caméra en mode still (haute qualité),
-et capture une image chaque fois que l'utilisateur appuie sur [Entrée].
-
-Les images sont sauvegardées dans 'output/calibration' avec la date et la résolution dans le nom.
-
-Appuyez sur Ctrl+C pour arrêter le script.
-"""
 
 # ---------------------------------------------------------------------------
 # Imports
 # ---------------------------------------------------------------------------
 
+from datetime import datetime
 import logging
 import sys
-from pathlib import Path
-from datetime import datetime
 
-from vision_python.src.camera.camera_factory import get_camera
 from vision_python.config import config
+from vision_python.src.camera.camera_factory import get_camera
 
 
 def setup_logging():
@@ -40,7 +28,7 @@ def main():
 
     try:
         image_width, image_height = config.get_camera_resolution()
-        output_path = config.get_output_directory() / "calibration"
+        output_path = config.get_output_directory() / "camera"
 
         # Initialiser la caméra en mode still (haute qualité)
         logger.info(

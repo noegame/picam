@@ -12,10 +12,10 @@ Detects ArUco markers in images and process real world coordinates.
 import cv2
 import numpy as np
 from pathlib import Path
-from src import aruco as aruco
-from src import detect_aruco as detect_aruco
-from src import unround_img as unround_img
-from config.env_loader import EnvConfig
+from vision_python.src import aruco as aruco
+from vision_python.src import detect_aruco as detect_aruco
+from vision_python.src import unround_img as unround_img
+from vision_python.config import config
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -38,14 +38,14 @@ PIXEL_TO_MM_RATIO = 1.0  # Conversion factor (adjust based on your calibration)
 
 def main():
 
-    # Load environment configuration
-    EnvConfig()
-    image_width = EnvConfig.get_camera_width()
-    image_height = EnvConfig.get_camera_height()
-    calibration_filename = EnvConfig.get_calibration_filename()
+    # Load configuration parameters
+    image_width = config.CAMERA_WIDTH
+    image_height = config.CAMERA_HEIGHT
 
     # Prepare input/output directories
-    fixtures_dir = Path("tests/fixtures/camera")
+    fixtures_dir = (
+        config.RASPBERRY_DIR / "vision_python" / "tests" / "fixtures" / "camera"
+    )
     image_files = sorted([f for f in fixtures_dir.glob("*.jpg") if f.is_file()])
 
     if not image_files:
@@ -54,11 +54,8 @@ def main():
     print(f"Found {len(image_files)} images to process\n")
 
     # Load camera calibration for unrounding
-    repo_root = Path(__file__).resolve().parents[1]
-    config_dir = repo_root / "config"
-    calibration_file = config_dir / calibration_filename
     camera_matrix, dist_coeffs = unround_img.import_camera_calibration(
-        str(calibration_file)
+        str(config.CALIBRATION_FILE)
     )
     image_size = (image_width, image_height)
     newcameramtx = unround_img.process_new_camera_matrix(

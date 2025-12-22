@@ -24,8 +24,29 @@ def init_aruco_detector() -> cv2.aruco.ArucoDetector:
 
     """
     aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_50)
-    aruco_params = cv2.aruco.DetectorParameters()
-    aruco_detector = cv2.aruco.ArucoDetector(aruco_dict, aruco_params)
+    parameters = cv2.aruco.DetectorParameters()
+    # aruco_params.minMarkerPerimeterRate = 0.005
+    # aruco_params.maxMarkerPerimeterRate = 13
+    # aruco_params.cornerRefinementMethod = cv2.aruco.CORNER_REFINE_CONTOUR
+
+    # # Seuillage adaptatif: fenêtres plus grandes pour compenser le flou
+    # parameters.adaptiveThreshWinSizeMin = 5  # Au lieu de 3
+    # parameters.adaptiveThreshWinSizeMax = 35  # Au lieu de 23
+    # parameters.adaptiveThreshWinSizeStep = 5  # Au lieu de 10
+
+    # # Réduire l'exigence de déviation standard pour Otsu
+    # parameters.minOtsuStdDev = 2.0  # Au lieu de 5.0
+
+    # # Augmenter la tolérance aux erreurs de lecture
+    # parameters.errorCorrectionRate = 0.8  # Au lieu de 0.6
+
+    # # Tolérer des erreurs dans la bordure (flou = pixels ambigus)
+    # parameters.maxErroneousBitsInBorderRate = 0.5  # Au lieu de 0.35
+
+    # # Augmenter les pixels par cellule lors du décodage
+    # parameters.perspectiveRemovePixelPerCell = 6  # Au lieu de 4
+
+    aruco_detector = cv2.aruco.ArucoDetector(aruco_dict, parameters)
     return aruco_detector
 
 
@@ -47,9 +68,15 @@ def detect_aruco_in_img(
     """
     # Convert image to grayscale
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    gaussian = cv2.GaussianBlur(gray, (0, 0), 2.0)
+    sharp = cv2.addWeighted(gray, 1.5, gaussian, -0.5, 0)
+
+    cv2.imwrite("/home/roboteseo/dev/picam/output/aruco_gray.png", gray)
+    cv2.imwrite("/home/roboteseo/dev/picam/output/aruco_sharp.png", sharp)
+    cv2.imwrite("/home/roboteseo/dev/picam/output/aruco_img.png", img)
 
     # Detection
-    corners_list, ids, rejected = aruco_detector.detectMarkers(gray)
+    corners_list, ids, rejected = aruco_detector.detectMarkers(sharp)
 
     detected_markers = []
     if ids is None or len(ids) == 0:
