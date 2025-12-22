@@ -12,7 +12,7 @@ Applies perspective transformation to straighten images.
 import cv2
 import numpy as np
 from vision_python.config import config
-from vision_python.src import aruco
+from raspberry.vision_python.src.aruco import aruco
 from vision_python.src import detect_aruco
 
 # ---------------------------------------------------------------------------

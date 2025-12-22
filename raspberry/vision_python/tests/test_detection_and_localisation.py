@@ -12,7 +12,7 @@ Detects ArUco markers in images and process real world coordinates.
 import cv2
 import numpy as np
 from pathlib import Path
-from vision_python.src import aruco as aruco
+from raspberry.vision_python.src.aruco import aruco as aruco
 from vision_python.src import detect_aruco as detect_aruco
 from vision_python.src import unround_img as unround_img
 from vision_python.config import config

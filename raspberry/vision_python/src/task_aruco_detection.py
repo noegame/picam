@@ -15,12 +15,12 @@ import cv2
 import logging
 import numpy as np
 
-from vision_python.src import aruco
+from raspberry.vision_python.src.aruco import aruco
 from vision_python.src import detect_aruco
-from vision_python.src import unround_img
+from vision_python.src.img_processing import unround_img
 from vision_python.src.camera import camera_factory
 from vision_python.config import config
-from vision_python.config import tags_informations
+from raspberry.vision_python.src.aruco import aruco_data
 
 
 # ---------------------------------------------------------------------------
@@ -55,14 +55,14 @@ def task_aruco_detection() -> None:
     """
 
     logger = logging.getLogger("task_aruco_detection")
-    camera = None
 
     try:
         # Load environment configuration
         try:
             img_width, img_height = config.get_camera_resolution()
             image_size = (img_width, img_height)
-            aruco_smiley = tags_informations.get_aruco_smiley_dict()
+            aruco_smiley = aruco_data.get_aruco_smiley_dict()
+            camera_mode = config.get_camera_mode()
 
         except Exception as e:
             logger.error(f"Erreur lors du chargement de la configuration: {e}")
@@ -80,7 +80,7 @@ def task_aruco_detection() -> None:
         # Initialize camera
         try:
             camera = camera_factory.get_camera(
-                w=img_width, h=img_height, allow_fallback=False, config_mode="still"
+                camera=camera_mode, w=img_width, h=img_height
             )
         except Exception as e:
             logger.error(f"Error while initializing the camera: {e}")
@@ -136,10 +136,9 @@ def task_aruco_detection() -> None:
 
                     try:
                         camera = camera_factory.get_camera(
+                            camera=camera_mode,
                             w=img_width,
                             h=img_height,
-                            allow_fallback=False,
-                            config_mode="still",
                         )
                         consecutive_errors = 0
                         logger.info("Camera restarted successfully")

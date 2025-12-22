@@ -38,9 +38,7 @@ image_path = (
     / "camera"
     / "image.jpg"
 )
-annotated_img_dir = (
-    config.RASPBERRY_DIR / "vision_python" / "tests" / "fixtures" / "annotated"
-)
+annotated_img_dir = config.RASPBERRY_DIR / "vision_python" / "tests" / "fixtures"
 
 # Getting image size
 image_size = (image_width, image_height)

@@ -4,7 +4,7 @@
 
 import cv2
 import numpy as np
-from vision_python.src.aruco import *
+from raspberry.vision_python.src.aruco.aruco import *
 
 # ---------------------------------------------------------------------------
 # Constantes globales
