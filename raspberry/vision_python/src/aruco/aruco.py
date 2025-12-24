@@ -1,11 +1,44 @@
+# usr/bin/env python3
+
+"""
+aruco.py
+Module for handling ArUco markers and related functionalities.
+"""
+
 # ---------------------------------------------------------------------------
-# Imports
+# Constants
 # ---------------------------------------------------------------------------
 
-import math
+RESET = "\033[0m"
+RED = "\033[91m"
+GREEN = "\033[92m"
+YELLOW = "\033[93m"
+BLUE = "\033[94m"
+MAGENTA = "\033[95m"
+CYAN = "\033[96m"
+WHITE = "\033[97m"
+
+aruco_smiley = {
+    20: "⚪",
+    21: "⚪",
+    22: "⚪",
+    23: "⚪",
+    36: "🔵",
+    47: "🟡",
+}
+
+aruco_color = {
+    20: WHITE,
+    21: WHITE,
+    22: WHITE,
+    23: WHITE,
+    36: BLUE,
+    47: YELLOW,
+}
+
 
 # ---------------------------------------------------------------------------
-# Fonctions principales
+# Classes and Methods
 # ---------------------------------------------------------------------------
 
 
@@ -16,26 +49,33 @@ class Aruco:
         self.z = z
         self.angle = angle
         self.aruco_id = aruco_id
+        self.real_x = None
+        self.real_y = None
 
     def __str__(self):
-        return f"Point(x={self.x}, y={self.y}, aruco_id={self.aruco_id}, angle={self.angle})"
+        return f"Aruco(id={self.aruco_id}, x={self.x}, y={self.y}, z={self.z}, angle={self.angle} real_x={self.real_x}, real_y={self.real_y})"
 
-    def __print__(self):
-        return self.__str__()
+    def get_smiley(self, tag_id: int) -> str:
+        return aruco_smiley.get(tag_id, "unknown")
 
-    def to_dict(self):
-        """Convert Point object to a JSON-serializable dictionary."""
-        return {
-            "x": self.x,
-            "y": self.y,
-            "aruco_id": self.aruco_id,
-            "angle": self.angle,
-        }
+    def get_color(self, tag_id: int) -> str:
+        return aruco_color.get(tag_id, RESET)
+
+    def set_real_world_coords(self, real_x: float, real_y: float):
+        self.real_x = real_x
+        self.real_y = real_y
+
+    def print(self):
+        smiley = self.get_smiley(self.aruco_id)
+        color = self.get_color(self.aruco_id)
+        print(
+            f"{color}{smiley} Aruco ID: {self.aruco_id} \t Image Coords: ({self.x:.2f}, {self.y:.2f}) \t Real World Coords: ({self.real_x:.2f}, {self.real_y:.2f}){color}{RESET}"
+        )
 
 
-def distance(p1: Aruco, p2: Aruco) -> float:
-    """Calcule la distance euclidienne entre deux points"""
-    return math.sqrt((p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2)
+# ---------------------------------------------------------------------------
+# Functions
+# ---------------------------------------------------------------------------
 
 
 def find_aruco_by_id(points: list[Aruco], target_id: int):
@@ -53,9 +93,3 @@ def find_aruco_by_id(points: list[Aruco], target_id: int):
         if p.aruco_id == target_id:
             return p
     return None
-
-
-def print_points(points: list) -> None:
-    """Affiche une liste de points"""
-    for i in range(len(points)):
-        print(f"{i}: {points[i].aruco_id} -> ({points[i].x}, {points[i].y})")

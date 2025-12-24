@@ -4,7 +4,7 @@
 
 import cv2
 import numpy as np
-from raspberry.vision_python.src.aruco.aruco import *
+from vision_python.src.aruco.aruco import *
 
 # ---------------------------------------------------------------------------
 # Constantes globales
@@ -66,14 +66,6 @@ def detect_aruco_in_img(
         list: A list of detected Aruco objects.
 
     """
-    # Convert image to grayscale
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    gaussian = cv2.GaussianBlur(gray, (0, 0), 2.0)
-    sharp = cv2.addWeighted(gray, 1.5, gaussian, -0.5, 0)
-
-    cv2.imwrite("/home/roboteseo/dev/picam/output/aruco_gray.png", gray)
-    cv2.imwrite("/home/roboteseo/dev/picam/output/aruco_sharp.png", sharp)
-    cv2.imwrite("/home/roboteseo/dev/picam/output/aruco_img.png", img)
 
     # Detection
     corners_list, ids, rejected = aruco_detector.detectMarkers(sharp)
