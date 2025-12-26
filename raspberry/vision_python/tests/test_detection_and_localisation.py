@@ -11,10 +11,9 @@ Detects ArUco markers in images and process real world coordinates.
 
 import cv2
 import numpy as np
-from pathlib import Path
-from raspberry.vision_python.src.aruco import aruco as aruco
-from vision_python.src import detect_aruco as detect_aruco
-from vision_python.src import unround_img as unround_img
+from raspberry.vision_python.src.aruco import aruco
+from raspberry.vision_python.src.img_processing import detect_aruco
+from vision_python.src.img_processing import unround_img
 from vision_python.config import config
 
 # ---------------------------------------------------------------------------
@@ -34,6 +33,11 @@ PIXEL_TO_MM_RATIO = 1.0  # Conversion factor (adjust based on your calibration)
 # ---------------------------------------------------------------------------
 # Main Test Code
 # ---------------------------------------------------------------------------
+
+
+def distance(tag1: aruco.Aruco, tag2: aruco.Aruco) -> float:
+    """Calculate Euclidean distance between two Aruco tags."""
+    return np.sqrt((tag1.x - tag2.x) ** 2 + (tag1.y - tag2.y) ** 2)
 
 
 def main():
@@ -143,7 +147,7 @@ def main():
         if tag_36 is not None:
             detected_count += 1
             # Calculate error in mm
-            error = aruco.distance(tag_36, expected_tag_36) * PIXEL_TO_MM_RATIO
+            error = distance(tag_36, expected_tag_36) * PIXEL_TO_MM_RATIO
             errors.append(error)
             print(
                 f"✓ {image_path.name}: Tag 36 found at ({tag_36.x:.2f}, {tag_36.y:.2f}) mm | Error: {error:.2f} mm"

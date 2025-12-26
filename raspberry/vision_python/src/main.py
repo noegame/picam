@@ -10,19 +10,17 @@ import signal
 import logging
 import logging.config
 from pathlib import Path
-from multiprocessing import Process
-
-from vision_python.config.env_loader import EnvConfig
-from vision_python.src.task_aruco_detection import task_aruco_detection
-
-# Load environment configuration
-EnvConfig()
+from multiprocessing import Process, Queue
+from vision_python.config import config
+from vision_python.src.tasks import task_aruco_detection
+from vision_python.src.tasks import task_ui
 
 # ---------------------------------------------------------------------------
 # Global Variables
 # ---------------------------------------------------------------------------
 
 processes = []
+
 
 # ---------------------------------------------------------------------------
 # Main Functions
@@ -81,24 +79,51 @@ if __name__ == "__main__":
     signal.signal(signal.SIGINT, signal_handler)
 
     try:
+        # Create processes for enabled tasks
+        task_list = []
+        core_id = 0
 
-        # Create processes
-        p1 = Process(
-            target=run_task,
-            args=(0, task_aruco_detection),
-            name="TaskArucoDetection",
-        )
+        # Create shared queue for image data (only if both tasks are enabled)
+        image_queue = None
+        if config.is_aruco_detection_enabled() and config.is_ui_enabled():
+            image_queue = Queue(maxsize=10)  # Limit queue size to avoid memory issues
+            logger.info("Created shared image queue for ArUco detection and UI")
+
+        if config.is_aruco_detection_enabled():
+            p = Process(
+                target=run_task,
+                args=(core_id, task_aruco_detection.run, image_queue),
+                name="TaskArucoDetection",
+            )
+            task_list.append(p)
+            core_id += 1
+
+        if config.is_ui_enabled():
+            p = Process(
+                target=run_task,
+                args=(core_id, task_ui.run, image_queue),
+                name="TaskUI",
+            )
+            task_list.append(p)
+            core_id += 1
 
         # Store global references
-        processes = [p1]
+        processes = task_list
 
-        # Start the processes
-        p1.start()
+        if not processes:
+            logger.warning("No tasks enabled in config. Exiting...")
+            sys.exit(0)
+
+        # Start all processes
+        for process in processes:
+            process.start()
+            logger.info(f"Started {process.name}")
 
         logger.info("All processes have started. Press Ctrl+C to stop...")
 
-        # Wait for processes to finish
-        p1.join()
+        # Wait for all processes to finish
+        for process in processes:
+            process.join()
 
     except KeyboardInterrupt:
         # Handle KeyboardInterrupt exception directly

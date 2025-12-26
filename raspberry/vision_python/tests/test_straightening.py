@@ -13,7 +13,7 @@ import cv2
 import numpy as np
 from vision_python.config import config
 from raspberry.vision_python.src.aruco import aruco
-from vision_python.src import detect_aruco
+from raspberry.vision_python.src.img_processing import detect_aruco
 
 # ---------------------------------------------------------------------------
 # Main Test Code

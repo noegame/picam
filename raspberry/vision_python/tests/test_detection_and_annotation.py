@@ -12,8 +12,8 @@ Detects ArUco markers in images.
 import cv2
 from pathlib import Path
 from vision_python.config import config
-from vision_python.src import detect_aruco
-from vision_python.src import unround_img
+from raspberry.vision_python.src.img_processing import detect_aruco
+from vision_python.src.img_processing import unround_img
 
 # ---------------------------------------------------------------------------
 # Constants

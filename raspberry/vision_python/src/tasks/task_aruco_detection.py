@@ -15,13 +15,11 @@ import cv2
 import logging
 import numpy as np
 
-from raspberry.vision_python.src.aruco import aruco
-from vision_python.src import detect_aruco
+from vision_python.src.aruco import aruco
+from vision_python.src.img_processing import detect_aruco
 from vision_python.src.img_processing import unround_img
 from vision_python.src.camera import camera_factory
 from vision_python.config import config
-from raspberry.vision_python.src.aruco import aruco_data
-
 
 # ---------------------------------------------------------------------------
 # Constantes globales
@@ -44,7 +42,7 @@ FIXED_IDS = {20, 21, 22, 23}
 # ---------------------------------------------------------------------------
 
 
-def task_aruco_detection() -> None:
+def run(image_queue=None) -> None:
     """
     Task of
     - take a picture with PiCamera2
@@ -52,6 +50,9 @@ def task_aruco_detection() -> None:
     - find the src points (fixed ArUco tags) in the picture to compute the perspective transform matrix
     - find real world coordinates of all detected ArUco tags in the picture with the perspective transform matrix
     - send the list of detected tags with their real world coordinates to the UI task via queue
+
+    Args:
+        image_queue: Optional multiprocessing.Queue to send images to the UI task
     """
 
     logger = logging.getLogger("task_aruco_detection")
@@ -61,7 +62,6 @@ def task_aruco_detection() -> None:
         try:
             img_width, img_height = config.get_camera_resolution()
             image_size = (img_width, img_height)
-            aruco_smiley = aruco_data.get_aruco_smiley_dict()
             camera_mode = config.get_camera_mode()
 
         except Exception as e:
@@ -205,7 +205,6 @@ def task_aruco_detection() -> None:
             matrix = cv2.getPerspectiveTransform(src_points, dst_points)
 
             # Convert detected tags image coordinates to real world coordinates
-            tags_from_real_world = []
             for tag in tags_from_img:
                 # Create homogeneous coordinate [x, y, z]
                 img_point = np.array([tag.x, tag.y, tag.z], dtype=np.float32).reshape(
@@ -220,14 +219,63 @@ def task_aruco_detection() -> None:
                 real_y = real_world_point[1, 0] / real_world_point[2, 0]
 
                 # Create new Aruco object with transformed coordinates
-                transformed_tag = aruco.Aruco(
-                    real_x, real_y, tag.z, tag.aruco_id, tag.angle
-                )
-                tags_from_real_world.append(transformed_tag)
+                tag.real_x = real_x
+                tag.real_y = real_y
 
-                logger.info(
-                    f"{aruco_smiley.get(tag.aruco_id, '')} Tag ID {tag.aruco_id}: Image coords ({tag.x:.2f}, {tag.y:.2f}) -> Real world coords ({real_x:.2f}, {real_y:.2f})"
-                )
+                tag.print()
+
+            # Send image and detected tags to UI queue if enabled
+            if image_queue is not None:
+                try:
+                    # Encode image to JPEG bytes for efficient transfer through multiprocessing queue
+                    ret, jpeg_buffer = cv2.imencode(
+                        ".jpg", img_unrounded, [cv2.IMWRITE_JPEG_QUALITY, 85]
+                    )
+                    if not ret:
+                        logger.warning("Failed to encode image to JPEG")
+                    else:
+                        # Convert tags to serializable format
+                        serializable_tags = []
+                        for tag in tags_from_img:
+                            tag_data = {
+                                "id": tag.aruco_id,
+                                "x": float(tag.x),
+                                "y": float(tag.y),
+                                "z": float(tag.z),
+                                "real_x": (
+                                    float(tag.real_x)
+                                    if hasattr(tag, "real_x")
+                                    else None
+                                ),
+                                "real_y": (
+                                    float(tag.real_y)
+                                    if hasattr(tag, "real_y")
+                                    else None
+                                ),
+                            }
+                            serializable_tags.append(tag_data)
+
+                        # Prepare data to send
+                        queue_data = {
+                            "image_bytes": jpeg_buffer.tobytes(),
+                            "tags": serializable_tags,
+                            "timestamp": time.time(),
+                        }
+
+                        # Non-blocking put - if queue is full, remove old item and add new
+                        if image_queue.full():
+                            try:
+                                image_queue.get_nowait()  # Remove oldest item
+                                logger.debug("Removed old frame from full queue")
+                            except:
+                                pass
+
+                        image_queue.put_nowait(queue_data)
+                        logger.info(
+                            f"Image and {len(serializable_tags)} tags sent to UI queue"
+                        )
+                except Exception as e:
+                    logger.error(f"Failed to send data to UI queue: {e}", exc_info=True)
 
             logger.info(
                 "Aruco detection iteration complete, waiting before next capture..."

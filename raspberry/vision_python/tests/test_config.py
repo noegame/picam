@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 
 """
+test_config.py
 test environment configuration
+test importation from file config.py
 """
 
 from vision_python.config import config

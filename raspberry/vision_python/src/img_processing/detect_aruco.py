@@ -4,7 +4,7 @@
 
 import cv2
 import numpy as np
-from vision_python.src.aruco.aruco import *
+from vision_python.src.aruco.aruco import Aruco
 
 # ---------------------------------------------------------------------------
 # Constantes globales
@@ -68,7 +68,7 @@ def detect_aruco_in_img(
     """
 
     # Detection
-    corners_list, ids, rejected = aruco_detector.detectMarkers(sharp)
+    corners_list, ids, rejected = aruco_detector.detectMarkers(img)
 
     detected_markers = []
     if ids is None or len(ids) == 0:

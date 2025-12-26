@@ -12,8 +12,7 @@ Goal : Debug process of ArUco markers detection in imgs.
 import cv2
 from pathlib import Path
 from vision_python.config import config
-from vision_python.src import detect_aruco
-from vision_python.src.aruco.aruco_data import get_aruco_smiley
+from raspberry.vision_python.src.img_processing import detect_aruco
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -57,9 +56,7 @@ def main():
 
         if tags_from_img:
             for tags in tags_from_img:
-                print(
-                    f"  {get_aruco_smiley(tags.aruco_id)} Detected tag ID: {tags.aruco_id} at img position: {tags.x}, {tags.y}"
-                )
+                tags.print()
         else:
             print("  No tags detected")
         print()
