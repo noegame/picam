@@ -52,7 +52,7 @@ def init_aruco_detector() -> cv2.aruco.ArucoDetector:
 
 def detect_aruco_in_img(
     img: np.ndarray, aruco_detector: cv2.aruco.ArucoDetector
-) -> list[Aruco]:
+) -> tuple[list[Aruco], list]:
     """
     Detect ArUco markers in an image.
     version of opencv :  4.6.0+dfsg-12
@@ -63,7 +63,9 @@ def detect_aruco_in_img(
         aruco_params: ArUco detector parameters.
 
     Returns:
-        list: A list of detected Aruco objects.
+        tuple: A tuple containing:
+            - list of detected Aruco objects
+            - list of rejected marker corners
 
     """
 
@@ -72,7 +74,7 @@ def detect_aruco_in_img(
 
     detected_markers = []
     if ids is None or len(ids) == 0:
-        return detected_markers
+        return detected_markers, rejected if rejected is not None else []
 
     #
     ids = ids.flatten()
@@ -100,12 +102,13 @@ def detect_aruco_in_img(
         )
         detected_markers.append(a)
 
-    return detected_markers
+    return detected_markers, rejected if rejected is not None else []
 
 
 def create_annotated_image(
     img: np.ndarray,
     detected_markers: list[Aruco],
+    rejected_markers: list = None,
 ) -> np.ndarray:
     """
     Create an annotated image with detected ArUco markers.
@@ -114,34 +117,50 @@ def create_annotated_image(
     Args:
         img: Original image.
         detected_markers: List of detected Aruco objects.
+        rejected_markers: List of rejected marker corners (optional).
 
     Returns:
         Annotated image with detected markers drawn.
 
     """
     annotated_img = img.copy()
-    if len(detected_markers) == 0:
-        return annotated_img
 
-    corners_list = []
-    ids = []
-    for marker in detected_markers:
-        corners = np.array(
-            [
-                [marker.x - 10, marker.y - 10],
-                [marker.x + 10, marker.y - 10],
-                [marker.x + 10, marker.y + 10],
-                [marker.x - 10, marker.y + 10],
-            ],
-            dtype=np.float32,
-        )
-        # Reshape to (4, 1, 2) format required by drawDetectedMarkers
-        corners = corners.reshape((4, 1, 2))
-        corners_list.append(corners)
-        ids.append(marker.aruco_id)
+    # Draw detected markers in green
+    if len(detected_markers) > 0:
+        corners_list = []
+        ids = []
+        for marker in detected_markers:
+            corners = np.array(
+                [
+                    [marker.x - 10, marker.y - 10],
+                    [marker.x + 10, marker.y - 10],
+                    [marker.x + 10, marker.y + 10],
+                    [marker.x - 10, marker.y + 10],
+                ],
+                dtype=np.float32,
+            )
+            # Reshape to (4, 1, 2) format required by drawDetectedMarkers
+            corners = corners.reshape((4, 1, 2))
+            corners_list.append(corners)
+            ids.append(marker.aruco_id)
 
-    ids = np.array(ids, dtype=np.int32)
+        ids = np.array(ids, dtype=np.int32)
+        annotated_img = cv2.aruco.drawDetectedMarkers(annotated_img, corners_list, ids)
 
-    annotated_img = cv2.aruco.drawDetectedMarkers(annotated_img, corners_list, ids)
+    # Draw rejected markers in red
+    if rejected_markers is not None and len(rejected_markers) > 0:
+        for corners in rejected_markers:
+            corners = corners.reshape((4, 2)).astype(np.int32)
+            cv2.polylines(annotated_img, [corners], True, (0, 0, 255), 2)
+            # Add "X" mark for rejected
+            center = corners.mean(axis=0).astype(np.int32)
+            cv2.drawMarker(
+                annotated_img,
+                tuple(center),
+                (0, 0, 255),
+                cv2.MARKER_TILTED_CROSS,
+                20,
+                2,
+            )
 
     return annotated_img

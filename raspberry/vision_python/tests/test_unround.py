@@ -12,7 +12,7 @@ Corrects image round distortion using camera calibration parameters.
 import cv2
 from pathlib import Path
 from vision_python.config import config
-from vision_python.src import unround_img
+from vision_python.src.img_processing import unround_img
 
 # ---------------------------------------------------------------------------
 # Main Test Code

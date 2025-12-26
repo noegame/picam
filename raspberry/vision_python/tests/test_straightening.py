@@ -12,8 +12,8 @@ Applies perspective transformation to straighten images.
 import cv2
 import numpy as np
 from vision_python.config import config
-from raspberry.vision_python.src.aruco import aruco
-from raspberry.vision_python.src.img_processing import detect_aruco
+from vision_python.src.aruco import aruco
+from vision_python.src.img_processing import detect_aruco
 
 # ---------------------------------------------------------------------------
 # Main Test Code
@@ -48,7 +48,7 @@ if img is None:
 aruco_detector = detect_aruco.init_aruco_detector()
 
 # Detect ArUco markers sources points
-tags_from_img = detect_aruco.detect_aruco_in_img(img, aruco_detector)
+tags_from_img, rejected_markers = detect_aruco.detect_aruco_in_img(img, aruco_detector)
 
 # Find source points by their ArUco IDs
 A2 = aruco.find_aruco_by_id(tags_from_img, 20)

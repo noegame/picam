@@ -33,7 +33,9 @@ img_size = (img_width, img_height)
 
 # Prepare input/output directories
 input_img_dir = config.RASPBERRY_DIR / "vision_python" / "tests" / "fixtures" / "data2"
-output_img_dir = config.RASPBERRY_DIR / "vision_python" / "tests" / "fixtures"
+output_img_dir = (
+    config.RASPBERRY_DIR / "vision_python" / "tests" / "fixtures" / "output"
+)
 
 # ---------------------------------------------------------------------------
 # Parameters

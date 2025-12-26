@@ -164,7 +164,7 @@ def run(image_queue=None) -> None:
             logger.debug("Image roundness corrected successfully")
 
             # Detect ArUco markers sources points
-            tags_from_img = detect_aruco.detect_aruco_in_img(
+            tags_from_img, rejected_markers = detect_aruco.detect_aruco_in_img(
                 img_unrounded, aruco_detector
             )
 

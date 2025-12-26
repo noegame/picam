@@ -52,7 +52,9 @@ def main():
             continue
 
         # Detect ArUco markers
-        tags_from_img = detect_aruco.detect_aruco_in_img(img, aruco_detector)
+        tags_from_img, rejected_markers = detect_aruco.detect_aruco_in_img(
+            img, aruco_detector
+        )
 
         if tags_from_img:
             for tags in tags_from_img:

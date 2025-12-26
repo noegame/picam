@@ -95,7 +95,9 @@ def main():
         )
 
         # Detect ArUco markers sources points
-        tags_from_img = detect_aruco.detect_aruco_in_img(img, aruco_detector)
+        tags_from_img, rejected_markers = detect_aruco.detect_aruco_in_img(
+            img, aruco_detector
+        )
 
         # Find source points by their ArUco IDs
         A2 = aruco.find_aruco_by_id(tags_from_img, 20)
