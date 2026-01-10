@@ -14,7 +14,7 @@ from multiprocessing import Process, Queue
 from vision_python.config import config
 from vision_python.src.tasks import task_aruco_detection
 from vision_python.src.tasks import task_ui
-from vision_python.src.hello import hello
+from src.hello.hello import hello
 
 
 # ---------------------------------------------------------------------------

@@ -47,13 +47,14 @@ aruco_color = {
 
 class Aruco:
     def __init__(self, x, y, z, aruco_id, angle=None):
+        self.aruco_id = aruco_id
         self.x = x
         self.y = y
         self.z = z
         self.angle = angle
-        self.aruco_id = aruco_id
         self.real_x = None
         self.real_y = None
+        self.real_angle = None
 
     def __str__(self):
         return f"Aruco(id={self.aruco_id}, x={self.x}, y={self.y}, z={self.z}, angle={self.angle} real_x={self.real_x}, real_y={self.real_y})"
@@ -71,13 +72,17 @@ class Aruco:
     def print(self):
         smiley = self.get_smiley(self.aruco_id)
         color = self.get_color(self.aruco_id)
-        if self.real_x is not None and self.real_y is not None:
+        if (
+            self.real_x is not None
+            and self.real_y is not None
+            and self.real_angle is not None
+        ):
             print(
-                f"{color}{smiley} Aruco ID: {self.aruco_id} \t Image Coords: ({self.x:.2f}, {self.y:.2f}) \t Real World Coords: ({self.real_x:.2f}, {self.real_y:.2f}){color}{RESET}"
+                f"{color}{smiley} Aruco ID: {self.aruco_id} \t Image Coords: ({self.x:.2f}, {self.y:.2f})({self.angle:.2f}) \t Real World Coords: ({self.real_x:.2f}, {self.real_y:.2f}) \t {self.real_angle:.2f}{RESET}"
             )
         else:
             print(
-                f"{color}{smiley} Aruco ID: {self.aruco_id} \t Image Coords: ({self.x:.2f}, {self.y:.2f}) \t Real World Coords: N/A{color}{RESET}"
+                f"{color}{smiley} Aruco ID: {self.aruco_id} \t Image Coords: ({self.x:.2f}, {self.y:.2f})({self.angle:.2f}) \t Real World Coords: N/A{RESET}"
             )
 
 

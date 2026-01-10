@@ -19,18 +19,16 @@ from vision_python.src.img_processing import unround_img
 # ---------------------------------------------------------------------------
 
 # Load configuration parameters
-image_width = config.CAMERA_WIDTH
-image_height = config.CAMERA_HEIGHT
-input_image_path = (
-    config.RASPBERRY_DIR / "vision_python" / "tests" / "fixtures" / "img.jpg"
-)
-output_image_path = (
-    config.RASPBERRY_DIR / "vision_python" / "tests" / "fixtures" / "unrounded.jpg"
-)
+image_width = config.get_camera_width()
+image_height = config.get_camera_height()
+calibration_file = config.get_camera_calibration_file()
+pictures_dir = config.get_pictures_directory()
+input_image_path = pictures_dir / "test" / "test.jpg"
+output_image_path = pictures_dir / "debug" / "unround" / "unrounded_image.jpg"
 
 # Import coefficients for unrounding
 camera_matrix, dist_coeffs = unround_img.import_camera_calibration(
-    str(config.CALIBRATION_FILE)
+    str(calibration_file)
 )
 
 # Getting image size

@@ -18,6 +18,7 @@ import cv2
 import numpy as np
 from vision_python.config import config
 from vision_python.src.aruco import aruco
+from vision_python.src.img_processing import unround_img
 
 
 # ---------------------------------------------------------------------------
@@ -25,7 +26,7 @@ from vision_python.src.aruco import aruco
 # ---------------------------------------------------------------------------
 
 # Désarrondissement de l'image (correction de l'effet fish-eye)
-unround = True
+unround = False
 
 # Prétraitement optimal
 sharpen_alpha = 1.5  # Contraste
@@ -43,10 +44,13 @@ polygonal_approx_accuracy_rate = 0.03  # Précision de détection des coins
 # Configuration
 # ---------------------------------------------------------------------------
 
+calibration_file = (
+    config.get_camera_calibration_directory() / "camera_calibration_2000x2000.npz"
+)
 img_width = config.get_camera_width()
 img_height = config.get_camera_height()
-input_pict_dir = config.get_pictures_directory() / "camera" / "2026-01-09"
-debug_pict_dir = config.get_pictures_directory() / "debug" / "2026-01-09"
+input_pict_dir = config.get_camera_directory() / "2026-01-09-playground-ready"
+debug_pict_dir = config.get_debug_directory() / "2026-01-09-playground-ready"
 img_size = (img_width, img_height)
 
 # ---------------------------------------------------------------------------
@@ -127,6 +131,12 @@ def save(filename: str, img: np.ndarray) -> None:
 def main():
 
     # ---------------------------------------------------------------------------
+    # Ensure debug directory exists
+    # ---------------------------------------------------------------------------
+
+    debug_pict_dir.mkdir(parents=True, exist_ok=True)
+
+    # ---------------------------------------------------------------------------
     # Get all image files from input directory
     # ---------------------------------------------------------------------------
 
@@ -140,8 +150,8 @@ def main():
     if not image_files:
         raise ValueError(f"No image files found in {input_pict_dir}")
 
-    print(f"Found {len(image_files)} image(s) to process")
     print(f"\n{'='*80}")
+    print(f"Found {len(image_files)} image(s) to process")
     print("Detection Parameters:")
     print(f"  - Adaptive Threshold Constant: {adaptive_thresh_constant}")
     print(f"  - Min Marker Perimeter Rate: {min_marker_perimeter_rate}")
@@ -152,6 +162,13 @@ def main():
     print(f"  - Beta (sharpness): {sharpen_beta}")
     print(f"  - Gamma (brightness): {sharpen_gamma}")
     print(f"{'='*80}")
+
+    camera_matrix, dist_coeffs = unround_img.import_camera_calibration(
+        str(calibration_file)
+    )
+    newcameramtx = unround_img.process_new_camera_matrix(
+        camera_matrix, dist_coeffs, img_size
+    )
 
     # ---------------------------------------------------------------------------
     # Process each image
@@ -187,6 +204,11 @@ def main():
         img = cv2.addWeighted(img, sharpen_alpha, img, sharpen_beta, sharpen_gamma)
         step = save_debug_image(base_name, "sharpened", step, img)
 
+        # Apply unrounding if enabled
+        if unround:
+            img = unround_img.unround(img, camera_matrix, dist_coeffs, newcameramtx)
+            step = save_debug_image(base_name, "unrounded", step, img)
+
         # Apply CLAHE if enabled
         if use_clahe:
             clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
@@ -199,7 +221,7 @@ def main():
 
         corners_list, ids, rejected = aruco_detector.detectMarkers(img)
 
-        detected_markers = []
+        detected_markers = []  # List of (marker, corners) tuples
         if ids is None or len(ids) == 0:
             print("⚠️  No ArUco markers detected.")
         else:
@@ -229,26 +251,31 @@ def main():
                     id_val,
                     angle,
                 )
-                detected_markers.append(a)
+                # Store marker with its corners for later angle calculation
+                detected_markers.append((a, corners))
 
-        tags_from_img = detected_markers
+        tags_from_img = [marker for marker, corners in detected_markers]
 
         # ---------------------------------------------------------------------------
         # Annotate detected markers on image
         # ---------------------------------------------------------------------------
 
         annotated_img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
-        cv2.aruco.drawDetectedMarkers(annotated_img, corners_list, ids)
-        for marker in detected_markers:
+        # Draw marker boundaries without IDs
+        cv2.aruco.drawDetectedMarkers(annotated_img, corners_list)
+        for marker, corners in detected_markers:
             center = (int(marker.x), int(marker.y))
+            # Draw green dot at center
             cv2.circle(annotated_img, center, 5, (0, 255, 0), -1)
+            # Draw ID text with offset from center (20 pixels to the right and down)
+            text_pos = (center[0] + 20, center[1] + 20)
             cv2.putText(
                 annotated_img,
-                f"ID:{marker.aruco_id}",
-                (center[0] + 10, center[1] - 10),
+                str(marker.aruco_id),
+                text_pos,
                 cv2.FONT_HERSHEY_SIMPLEX,
-                0.5,
-                (0, 255, 0),
+                0.6,
+                (255, 0, 0),  # Blue color
                 2,
             )
 
@@ -293,13 +320,35 @@ def main():
             perspective_matrix = cv2.getPerspectiveTransform(src_points, dst_points)
 
             # Transform detected tags to real world coordinates
-            for tag in tags_from_img:
+            for tag, tag_corners in detected_markers:
                 img_point = np.array([[tag.x, tag.y]], dtype=np.float32)
                 img_point = np.array([img_point])  # Reshape for perspectiveTransform
                 real_point = cv2.perspectiveTransform(img_point, perspective_matrix)
                 real_x, real_y = real_point[0][0]
                 tag.real_x = real_x
                 tag.real_y = real_y
+
+                # Transform corners to real world coordinates to calculate real angle
+                corners_reshaped = tag_corners.reshape(
+                    1, -1, 2
+                )  # Shape for perspectiveTransform
+                real_corners = cv2.perspectiveTransform(
+                    corners_reshaped, perspective_matrix
+                )
+                real_corners = real_corners.reshape(4, 2)
+
+                # Calculate angle from top edge in real world coordinates
+                dx = real_corners[1][0] - real_corners[0][0]  # Top-right X - Top-left X
+                dy = real_corners[1][1] - real_corners[0][1]  # Top-right Y - Top-left Y
+                real_angle = float(np.degrees(np.arctan2(dy, dx)))
+
+                # Normalize angle to [-180, 180] range
+                if real_angle > 180:
+                    real_angle -= 360
+                elif real_angle < -180:
+                    real_angle += 360
+
+                tag.real_angle = real_angle
 
         # ---------------------------------------------------------------------------
         # Print detected tags information

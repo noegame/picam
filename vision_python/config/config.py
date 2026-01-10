@@ -79,12 +79,15 @@ FLASK_PORT = 5000
 # ---------------------------------------------------------------------------
 
 PROJECT_DIR = Path(__file__).resolve().parents[2]
-RASPBERRY_DIR = PROJECT_DIR / "raspberry"
 PICTURES_DIR = PROJECT_DIR / "pictures"
 CAMERA_DIR = PICTURES_DIR / "camera"
-VISION_DIR = RASPBERRY_DIR / "vision_python"
-CALIBRATION_DIR = VISION_DIR / "config" / "calibrations"
 LOG_DIR = PROJECT_DIR / "logs"
+VISION_DIR = PROJECT_DIR / "vision_python"
+CALIBRATION_DIR = VISION_DIR / "config" / "calibrations"
+CALIBRATION_FILE = (
+    VISION_DIR / "config" / "calibrations" / "camera_calibration_2000x2000.npz"
+)
+
 
 # ---------------------------------------------------------------------------
 # Getter Functions
@@ -146,6 +149,11 @@ def get_camera_directory():
     return CAMERA_DIR
 
 
+def get_debug_directory():
+    """Returns the debug output directory path."""
+    return PICTURES_DIR / "debug"
+
+
 def get_vision_directory():
     """Returns the vision_python directory path."""
     return VISION_DIR
@@ -164,3 +172,13 @@ def get_pictures_directory():
 def get_log_directory():
     """Returns the log directory path."""
     return LOG_DIR
+
+
+def get_camera_calibration_directory():
+    """Returns the camera calibration directory path."""
+    return CALIBRATION_DIR
+
+
+def get_camera_calibration_file():
+    """Returns the camera calibration file path."""
+    return CALIBRATION_FILE
