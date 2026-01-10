@@ -69,12 +69,12 @@ if __name__ == "__main__":
     hello()
     # Configure logging with absolute path
     repo_root = Path(__file__).resolve().parents[2]
-    log_file_path = repo_root / "logs" / "aruco_detection_flow.log"
-    log_file_path.parent.mkdir(parents=True, exist_ok=True)
+    log_dir = repo_root / "logs"
+    log_dir.mkdir(parents=True, exist_ok=True)
 
     logging_conf_path = repo_root / "vision_python" / "config" / "logging.conf"
     logging.config.fileConfig(
-        str(logging_conf_path), defaults={"log_file": str(log_file_path)}
+        str(logging_conf_path), defaults={"log_dir": str(log_dir)}
     )
     logger = logging.getLogger("main")
 
