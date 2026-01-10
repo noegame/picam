@@ -86,13 +86,8 @@ HTML_TEMPLATE = """
     </style>
 </head>
 <body>
-    <h1>ArUco Detection Live View</h1>
     <div class="container">
         <img src="{{ url_for('video_feed') }}" alt="Live Stream">
-        <div class="info">
-            <p><strong>Status:</strong> Streaming live ArUco detection results</p>
-            <p><strong>Info:</strong> Green markers show detected ArUco tags with their IDs and real-world coordinates (mm)</p>
-        </div>
     </div>
 </body>
 </html>
