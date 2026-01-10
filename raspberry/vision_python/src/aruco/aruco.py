@@ -17,6 +17,7 @@ BLUE = "\033[94m"
 MAGENTA = "\033[95m"
 CYAN = "\033[96m"
 WHITE = "\033[97m"
+BLACK = "\033[90m"
 
 aruco_smiley = {
     20: "⚪",
@@ -25,6 +26,7 @@ aruco_smiley = {
     23: "⚪",
     36: "🔵",
     47: "🟡",
+    41: "⚫",
 }
 
 aruco_color = {
@@ -34,6 +36,7 @@ aruco_color = {
     23: WHITE,
     36: BLUE,
     47: YELLOW,
+    41: BLACK,
 }
 
 
@@ -68,9 +71,14 @@ class Aruco:
     def print(self):
         smiley = self.get_smiley(self.aruco_id)
         color = self.get_color(self.aruco_id)
-        print(
-            f"{color}{smiley} Aruco ID: {self.aruco_id} \t Image Coords: ({self.x:.2f}, {self.y:.2f}) \t Real World Coords: ({self.real_x:.2f}, {self.real_y:.2f}){color}{RESET}"
-        )
+        if self.real_x is not None and self.real_y is not None:
+            print(
+                f"{color}{smiley} Aruco ID: {self.aruco_id} \t Image Coords: ({self.x:.2f}, {self.y:.2f}) \t Real World Coords: ({self.real_x:.2f}, {self.real_y:.2f}){color}{RESET}"
+            )
+        else:
+            print(
+                f"{color}{smiley} Aruco ID: {self.aruco_id} \t Image Coords: ({self.x:.2f}, {self.y:.2f}) \t Real World Coords: N/A{color}{RESET}"
+            )
 
 
 # ---------------------------------------------------------------------------

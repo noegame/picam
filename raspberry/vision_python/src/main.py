@@ -14,6 +14,8 @@ from multiprocessing import Process, Queue
 from vision_python.config import config
 from vision_python.src.tasks import task_aruco_detection
 from vision_python.src.tasks import task_ui
+from vision_python.src.hello import hello
+
 
 # ---------------------------------------------------------------------------
 # Global Variables
@@ -64,6 +66,7 @@ def run_task(core_id, func, *args):
 
 
 if __name__ == "__main__":
+    hello()
     # Configure logging with absolute path
     repo_root = Path(__file__).resolve().parents[2]
     log_file_path = repo_root / "logs" / "aruco_detection_flow.log"

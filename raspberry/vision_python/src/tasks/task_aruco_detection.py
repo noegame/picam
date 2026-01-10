@@ -14,6 +14,8 @@ import time
 import cv2
 import logging
 import numpy as np
+import os
+from datetime import datetime
 
 from vision_python.src.aruco import aruco
 from vision_python.src.img_processing import detect_aruco
@@ -73,6 +75,12 @@ def run(image_queue=None) -> None:
             camera_pictures_dir = config.get_camera_directory()
             calibration_file = config.get_calibration_file_path()
 
+            # Create subdirectory for today's date
+            today_date = datetime.now().strftime("%Y-%m-%d")
+            daily_pictures_dir = os.path.join(camera_pictures_dir, today_date)
+            os.makedirs(daily_pictures_dir, exist_ok=True)
+            logger.info(f"Using daily directory: {daily_pictures_dir}")
+
         except Exception as e:
             logger.error(f"Error while preparing input/output directories: {e}")
             raise
@@ -115,7 +123,7 @@ def run(image_queue=None) -> None:
             # Take a picture
             try:
                 original_img, original_filepath = camera.capture_image(
-                    pictures_dir=camera_pictures_dir
+                    pictures_dir=daily_pictures_dir
                 )
                 consecutive_errors = 0  # Reset error counter on successful capture
 
@@ -222,6 +230,9 @@ def run(image_queue=None) -> None:
                 tag.real_x = real_x
                 tag.real_y = real_y
 
+            # sort aruco by id for easier reading
+            tags_from_img.sort(key=lambda tag: tag.aruco_id)
+            for tag in tags_from_img:
                 tag.print()
 
             # Send image and detected tags to UI queue if enabled

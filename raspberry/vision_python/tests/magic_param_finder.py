@@ -20,7 +20,37 @@ Information about eurobot competition 2026 rules :
 - at the beginning of the match the game elements are placed on the playground at known positions and orientations but we don't know which face is visible
 
 """
+"""
 
+
+## Optimisation des Paramètres
+
+### Stratégie de Test
+
+**Ordre de priorité :**
+1. **Correction distorsion** : Toujours activée (si calibration disponible)
+2. **Sharpening** : Test en premier (fort impact, faible coût)
+3. **Paramètres ArUco** : adaptive_const, min_perim (impact modéré)
+4. **CLAHE** : Test en dernier (coût élevé, impact variable)
+
+### Métriques d'Évaluation
+
+**Score composite :**
+```
+score = detection_rate × 50 + game_elements × 10 - position_error/50 - fixed_penalty
+```
+
+**Composantes :**
+- **detection_rate** : Proportion d'éléments de jeu détectés
+- **game_elements** : Nombre brut d'éléments détectés
+- **position_error** : Erreur moyenne de position (mm)
+- **fixed_penalty** : Pénalité si marqueurs fixes manquants (50 points par marqueur)
+
+**Objectif :** Maximiser les détections tout en minimisant l'erreur de position.
+
+---
+
+"""
 # ---------------------------------------------------------------------------
 # Imports
 # ---------------------------------------------------------------------------
@@ -88,9 +118,7 @@ img_height = config.CAMERA_HEIGHT
 img_size = (img_width, img_height)
 
 # Prepare input/output directories
-input_img_dir = (
-    config.RASPBERRY_DIR / "vision_python" / "tests" / "fixtures" / "initial_playground"
-)
+input_img_dir = config.PICTURES_DIR / "camera" / "2026-01-09"
 output_img_dir = (
     config.RASPBERRY_DIR / "vision_python" / "tests" / "fixtures" / "output"
 )
@@ -209,7 +237,6 @@ def calculate_detection_score(
             position_errors.append(error)
 
     # Also calculate position errors for game elements by matching to nearest expected position
-    game_element_errors = []
     for marker in detected_markers:
         if (
             marker.aruco_id in GAME_ELEMENT_IDS
@@ -228,11 +255,7 @@ def calculate_detection_score(
             if (
                 min_dist != float("inf") and min_dist < 200
             ):  # Only count if within 200mm
-                game_element_errors.append(min_dist)
-
-    # Combine all position errors
-    all_errors = position_errors + game_element_errors
-    position_errors = all_errors
+                position_errors.append(min_dist)
 
     avg_position_error = np.mean(position_errors) if position_errors else float("inf")
     max_position_error = np.max(position_errors) if position_errors else float("inf")
@@ -282,8 +305,11 @@ def preprocess_image(img: np.ndarray, params: PreprocessingParams) -> np.ndarray
         )
         img = clahe.apply(img)
 
-    # Apply sharpening
-    img = cv2.addWeighted(img, params.sharpen_alpha, img, params.sharpen_beta, 0)
+    # Apply sharpening: original - blurred version
+    # Formula: sharpened = original * alpha + blurred * beta
+    # where beta should be negative to subtract the blur
+    blur = cv2.GaussianBlur(img, (5, 5), 0)
+    img = cv2.addWeighted(img, params.sharpen_alpha, blur, params.sharpen_beta, 0)
 
     return img
 
@@ -343,13 +369,20 @@ def process_detected_markers(corners_list, ids) -> List[aruco.Aruco]:
 
 def apply_perspective_transform(tags_from_img: List[aruco.Aruco]) -> bool:
     """Apply perspective transformation to get real-world coordinates"""
-    # Source points from detected markers
+    # Source points from detected markers - use ordered list to ensure correct correspondence
+    # Order must match destination points: [A1(20), B1(22), C1(21), D1(23)]
+    ordered_ids = [20, 22, 21, 23]  # A1, B1, C1, D1
     src_points = []
-    for fixed_id in FIXED_IDS:
+
+    for fixed_id in ordered_ids:
+        found = False
         for tag in tags_from_img:
             if tag.aruco_id == fixed_id:
                 src_points.append([tag.x, tag.y])
+                found = True
                 break
+        if not found:
+            return False  # Missing required marker
 
     if len(src_points) != 4:
         return False
@@ -357,12 +390,13 @@ def apply_perspective_transform(tags_from_img: List[aruco.Aruco]) -> bool:
     src_points = np.array(src_points, dtype=np.float32)
 
     # Destination points in real world coordinates
+    # Order: A1(20), B1(22), C1(21), D1(23)
     dst_points = np.array(
         [
-            [A1.x, A1.y],
-            [B1.x, B1.y],
-            [C1.x, C1.y],
-            [D1.x, D1.y],
+            [A1.x, A1.y],  # ID 20
+            [B1.x, B1.y],  # ID 22
+            [C1.x, C1.y],  # ID 21
+            [D1.x, D1.y],  # ID 23
         ],
         dtype=np.float32,
     )
@@ -616,8 +650,9 @@ img = clahe.apply(img)"""
 
     print(
         f"""
+blur = cv2.GaussianBlur(img, (5, 5), 0)
 img = cv2.addWeighted(img, {best_config.preprocessing_params.sharpen_alpha}, 
-                     img, {best_config.preprocessing_params.sharpen_beta}, 0)
+                     blur, {best_config.preprocessing_params.sharpen_beta}, 0)
 
 # ArUco Detection
 aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_50)

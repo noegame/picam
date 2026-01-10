@@ -10,12 +10,12 @@ from vision_python.config import config
 import cv2
 
 print(f" PROJECT_DIR: {config.PROJECT_DIR}")
-print(f" OUTPUT_DIR: {config.OUTPUT_DIR}")
+print(f" OUTPUT_DIR: {config.PICTURES_DIR}")
 print(f" RASPBERRY_DIR: {config.RASPBERRY_DIR}")
 
-for item in config.OUTPUT_DIR.iterdir():
+for item in config.PICTURES_DIR.iterdir():
     item_type = "folder" if item.is_dir() else "file"
     print(f"{item_type}: {item.name}")
 
-image_path = config.OUTPUT_DIR / "aruco_gray.png"
+image_path = config.PICTURES_DIR / "aruco_gray.png"
 image = cv2.imread(str(image_path))

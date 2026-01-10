@@ -26,6 +26,10 @@ def main():
     setup_logging()
     logger = logging.getLogger("capture_for_calibration")
 
+    cam = None  # has to be initialized before the try block
+    camera = (
+        config.get_camera_mode()
+    )  # type of camera from config(emulated, raspberry, computer)
     try:
         image_width, image_height = config.get_camera_resolution()
         output_path = config.get_output_directory() / "camera"
@@ -35,7 +39,10 @@ def main():
             f"Initialisation de la caméra avec une résolution de {image_width}x{image_height}..."
         )
         cam = get_camera(
-            w=image_width, h=image_height, config_mode="still", use_fake_camera=False
+            w=image_width,
+            h=image_height,
+            camera=camera,
+            camera_param="still",
         )
         logger.info("✓ Caméra initialisée en mode STILL (haute qualité)")
 
@@ -54,7 +61,9 @@ def main():
             try:
                 # Créer le timestamp et le nom de fichier avec la résolution
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
-                filename = f"{timestamp}_{image_width}x{image_height}_capture.jpg"
+                filename = (
+                    f"{timestamp}_{image_width}x{image_height}_capture_debut_match.jpg"
+                )
                 filepath = output_path / filename
 
                 # Capturer et sauvegarder l'image
