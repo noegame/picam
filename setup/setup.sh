@@ -24,12 +24,5 @@ sudo apt install -y python3-opencv
 # === Configuration du Wi-Fi ===
 sudo bash ./setup_wifi.sh
 
-# === Création des dossiers ===
-cd
-sudo mkdir dev/picam/logs
-sudo mkdir dev/picam/output
-sudo mkdir dev/picam/output/camera
-sudo mkdir dev/picam/output/processed_img
-
 # Redémarrage de la Raspberry Pi
 echo "Un redémarrage est recommandé : sudo reboot"

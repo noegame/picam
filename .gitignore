@@ -1,5 +1,5 @@
 # folder exclusions
-pictures/
+pictures/*
 .venv/
 .env/
 
@@ -7,8 +7,3 @@ pictures/
 *.log
 *code-workspace
 *__pycache__/
-
-# protection of wifi passwords
-wifi_config.json
-setup_wifi.sh
-wifi.json
