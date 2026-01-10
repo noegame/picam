@@ -35,7 +35,7 @@ camera_matrix, dist_coeffs = unround_img.import_camera_calibration(
 image_size = (image_width, image_height)
 
 # Calculate a new optimal camera matrix for distortion correction.
-newcameramtx = unround_img.process_new_camera_matrix(
+newcameramtx, roi = unround_img.process_new_camera_matrix(
     camera_matrix, dist_coeffs, image_size
 )
 

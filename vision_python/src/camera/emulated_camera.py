@@ -1,18 +1,17 @@
 #!/usr/bin/env python3
 """
-Fonctions liées à la fausse caméra (émulation)
+emulated_camera.py
+An emulated camera that reads images from a specified folder.
 """
 
 # ---------------------------------------------------------------------------
 # Imports
 # ---------------------------------------------------------------------------
 
-from datetime import datetime
 from pathlib import Path
 import numpy as np
 import cv2
 import logging
-import shutil
 
 # ---------------------------------------------------------------------------
 # Classe
@@ -68,21 +67,12 @@ class EmulatedCamera:
             raise Exception(f"Erreur lors de la capture simulée du tableau: {e}")
 
     def capture_image(self, pictures_dir: Path) -> tuple[np.ndarray, Path]:
-        """'Capture' une image en lisant un fichier, la sauvegarde et la retourne."""
+        """'Capture' une image en lisant un fichier directement sans la sauvegarder."""
         try:
-            # Créer le répertoire s'il n'existe pas
-            pictures_dir.mkdir(parents=True, exist_ok=True)
-
             source_path = self.image_files[self.current_image_index]
 
-            # Générer le nom de fichier avec timestamp
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
-            filename = f"{timestamp}_capture.jpg"
-            filepath = pictures_dir / filename
-
-            # Copier l'image et la charger
-            shutil.copy(source_path, filepath)
-            image_array = cv2.imread(str(filepath))  # cv2 lit en BGR
+            # Lire l'image directement depuis le dossier source
+            image_array = cv2.imread(str(source_path))  # cv2 lit en BGR
 
             # Convertir BGR en RGB pour cohérence avec PiCamera
             image_array_rgb = cv2.cvtColor(image_array, cv2.COLOR_BGR2RGB)
@@ -91,10 +81,10 @@ class EmulatedCamera:
                 self.image_files
             )
             logger.info(
-                f"Image 'capturée': {filepath.name} (source: {source_path.name})"
+                f"Image 'capturée' depuis: {source_path.name} (pas de copie sauvegardée)"
             )
 
-            return image_array_rgb, filepath
+            return image_array_rgb, source_path
         except Exception as e:
             logger.error(f"Erreur lors de la capture simulée: {e}")
             raise Exception(f"Erreur lors de la capture simulée: {e}")

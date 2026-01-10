@@ -3,7 +3,7 @@
 """
 task_aruco_detection.py
 Detection and localization of ArUco tags using PiCamera2
-Sends detected tag data to a queue for
+Sends detected tag data to a queue for UI display
 """
 
 # ---------------------------------------------------------------------------
@@ -16,6 +16,7 @@ import logging
 import numpy as np
 import os
 from datetime import datetime
+from pathlib import Path
 
 from vision_python.src.aruco import aruco
 from vision_python.src.img_processing import detect_aruco
@@ -31,12 +32,6 @@ A1 = aruco.Aruco(600, 600, 1, 20)
 B1 = aruco.Aruco(1400, 600, 1, 22)
 C1 = aruco.Aruco(600, 2400, 1, 21)
 D1 = aruco.Aruco(1400, 2400, 1, 23)
-
-# A1 = aruco.Aruco(53, 53, 1, 20)  # SO
-# B1 = aruco.Aruco(123, 53, 1, 22)  # SE
-# C1 = aruco.Aruco(53, 213, 1, 21)  # NO
-# D1 = aruco.Aruco(123, 213, 1, 23)  # NE
-
 FIXED_IDS = {20, 21, 22, 23}
 
 # ---------------------------------------------------------------------------
@@ -58,37 +53,41 @@ def run(image_queue=None) -> None:
     """
 
     logger = logging.getLogger("task_aruco_detection")
+    camera = None  # Initialize camera variable to avoid UnboundLocalError
 
     try:
-        # Load environment configuration
+        # Load configuration
         try:
             img_width, img_height = config.get_camera_resolution()
-            image_size = (img_width, img_height)
+            image_size = config.get_camera_resolution()
             camera_mode = config.get_camera_mode()
+            calibration_file = config.get_camera_calibration_file()
+
+            if camera_mode == config.CameraMode.EMULATED:
+                # Use existing folder from config, don't create today's folder
+                daily_pictures_dir = config.get_emulated_cam_directory()
+                logger.info(f"Using emulated camera directory: {daily_pictures_dir}")
+            elif camera_mode == config.CameraMode.PI:
+                # Create subdirectory for today's date for real camera
+                pictures_dir = config.get_camera_directory()
+                today_date = datetime.now().strftime("%Y-%m-%d")
+                daily_pictures_dir = Path(pictures_dir) / today_date
+                os.makedirs(daily_pictures_dir, exist_ok=True)
+                logger.info(f"Using daily directory: {daily_pictures_dir}")
 
         except Exception as e:
-            logger.error(f"Erreur lors du chargement de la configuration: {e}")
-            raise
-
-        # Prepare directories and files
-        try:
-            camera_pictures_dir = config.get_camera_directory()
-            calibration_file = config.get_calibration_file_path()
-
-            # Create subdirectory for today's date
-            today_date = datetime.now().strftime("%Y-%m-%d")
-            daily_pictures_dir = os.path.join(camera_pictures_dir, today_date)
-            os.makedirs(daily_pictures_dir, exist_ok=True)
-            logger.info(f"Using daily directory: {daily_pictures_dir}")
-
-        except Exception as e:
-            logger.error(f"Error while preparing input/output directories: {e}")
+            logger.error(
+                f"Error while loading configuration or preparing directories: {e}"
+            )
             raise
 
         # Initialize camera
         try:
             camera = camera_factory.get_camera(
-                camera=camera_mode, w=img_width, h=img_height
+                camera=camera_mode,
+                w=img_width,
+                h=img_height,
+                camera_param=daily_pictures_dir,
             )
         except Exception as e:
             logger.error(f"Error while initializing the camera: {e}")
@@ -101,7 +100,7 @@ def run(image_queue=None) -> None:
         logger.info("Calibration parameters imported successfully")
 
         # Process
-        newcameramtx = unround_img.process_new_camera_matrix(
+        newcameramtx, roi = unround_img.process_new_camera_matrix(
             camera_matrix, dist_coeffs, image_size
         )
         logger.info("New optimized camera matrix calculated successfully")
@@ -147,6 +146,7 @@ def run(image_queue=None) -> None:
                             camera=camera_mode,
                             w=img_width,
                             h=img_height,
+                            camera_param=pictures_dir,
                         )
                         consecutive_errors = 0
                         logger.info("Camera restarted successfully")
@@ -168,7 +168,6 @@ def run(image_queue=None) -> None:
                 dist_coeffs=dist_coeffs,
                 newcameramtx=newcameramtx,
             )
-            img_unrounded = img_bgr
             logger.debug("Image roundness corrected successfully")
 
             # Detect ArUco markers sources points
@@ -194,6 +193,8 @@ def run(image_queue=None) -> None:
                     )
                     time.sleep(1)  # Avoid overload in case of repeated missing markers
                     continue
+                else:
+                    logger.info("Using previous perspective transformation matrix")
 
             else:
                 logger.info("All reference aruco markers found")
@@ -209,8 +210,8 @@ def run(image_queue=None) -> None:
                     dtype=np.float32,
                 )
 
-            # Calculate the perspective transformation matrix
-            matrix = cv2.getPerspectiveTransform(src_points, dst_points)
+                # Calculate the perspective transformation matrix
+                matrix = cv2.getPerspectiveTransform(src_points, dst_points)
 
             # Convert detected tags image coordinates to real world coordinates
             for tag in tags_from_img:
@@ -226,9 +227,12 @@ def run(image_queue=None) -> None:
                 real_x = real_world_point[0, 0] / real_world_point[2, 0]
                 real_y = real_world_point[1, 0] / real_world_point[2, 0]
 
-                # Create new Aruco object with transformed coordinates
+                # Set real world coordinates
                 tag.real_x = real_x
                 tag.real_y = real_y
+                tag.real_angle = (
+                    tag.angle
+                )  # Copy angle as-is (no transformation needed)
 
             # sort aruco by id for easier reading
             tags_from_img.sort(key=lambda tag: tag.aruco_id)

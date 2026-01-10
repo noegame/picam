@@ -26,7 +26,7 @@ from vision_python.src.img_processing import unround_img
 # ---------------------------------------------------------------------------
 
 # Désarrondissement de l'image (correction de l'effet fish-eye)
-unround = False
+unround = True
 
 # Prétraitement optimal
 sharpen_alpha = 1.5  # Contraste
@@ -49,8 +49,12 @@ calibration_file = (
 )
 img_width = config.get_camera_width()
 img_height = config.get_camera_height()
-input_pict_dir = config.get_camera_directory() / "2026-01-09-playground-ready"
-debug_pict_dir = config.get_debug_directory() / "2026-01-09-playground-ready"
+input_pict_dir = (
+    config.get_camera_directory() / "2025-12-22-sample"
+)  # "2026-01-09-playground-ready"
+debug_pict_dir = (
+    config.get_debug_directory() / "2025-12-22-sample"
+)  # "2026-01-09-playground-ready"
 img_size = (img_width, img_height)
 
 # ---------------------------------------------------------------------------
@@ -166,7 +170,7 @@ def main():
     camera_matrix, dist_coeffs = unround_img.import_camera_calibration(
         str(calibration_file)
     )
-    newcameramtx = unround_img.process_new_camera_matrix(
+    newcameramtx, roi = unround_img.process_new_camera_matrix(
         camera_matrix, dist_coeffs, img_size
     )
 

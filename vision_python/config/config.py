@@ -52,7 +52,7 @@ polygonal_approx_accuracy_rate = 0.03  # Précision de détection des coins
 
 CAMERA_WIDTH = 4000
 CAMERA_HEIGHT = 4000
-CAMERA = CameraMode.PI
+CAMERA = CameraMode.EMULATED
 
 # ---------------------------------------------------------------------------
 # Logging Configuration
@@ -87,7 +87,7 @@ CALIBRATION_DIR = VISION_DIR / "config" / "calibrations"
 CALIBRATION_FILE = (
     VISION_DIR / "config" / "calibrations" / "camera_calibration_2000x2000.npz"
 )
-
+EMULATED_CAM_DIR = CAMERA_DIR / "2026-01-09-playground-ready"
 
 # ---------------------------------------------------------------------------
 # Getter Functions
@@ -182,3 +182,8 @@ def get_camera_calibration_directory():
 def get_camera_calibration_file():
     """Returns the camera calibration file path."""
     return CALIBRATION_FILE
+
+
+def get_emulated_cam_directory():
+    """Returns the emulated images directory path."""
+    return EMULATED_CAM_DIR

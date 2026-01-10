@@ -35,7 +35,7 @@ def import_camera_calibration(
 
 def process_new_camera_matrix(
     camera_matrix: numpy.ndarray, dist_coeffs: numpy.ndarray, image_size: tuple
-) -> numpy.ndarray:
+):
     """
     Calcule une nouvelle matrice de caméra optimale pour la correction de la distorsion.
 
@@ -45,13 +45,13 @@ def process_new_camera_matrix(
         image_size (tuple): La taille de l'image (largeur, hauteur).
 
     Returns:
-        numpy.ndarray: La nouvelle matrice de caméra optimisée.
+        tuple: La nouvelle matrice de caméra optimisée et le ROI (x, y, w, h).
     """
     w, h = image_size
     newcameramtx, roi = cv2.getOptimalNewCameraMatrix(
         camera_matrix, dist_coeffs, (w, h), 1, (w, h)
     )
-    return newcameramtx
+    return newcameramtx, roi
 
 
 def unround(
@@ -76,3 +76,33 @@ def unround(
     # La nouvelle matrice de caméra (newcameramtx) est utilisée pour mapper les pixels de l'image corrigée.
     img_undistorted = cv2.undistort(img, camera_matrix, dist_coeffs, None, newcameramtx)
     return img_undistorted
+
+
+def unround_with_roi(
+    img: numpy.ndarray,
+    camera_matrix: numpy.ndarray,
+    dist_coeffs: numpy.ndarray,
+    newcameramtx: numpy.ndarray,
+    roi: tuple,
+) -> numpy.ndarray:
+    """
+    Corrige la distorsion d'une image et recadre selon le ROI pour éliminer les bordures noires.
+
+    Args:
+        img (numpy.ndarray): L'image d'entrée (distordue).
+        camera_matrix (numpy.ndarray): La matrice intrinsèque de la caméra.
+        dist_coeffs (numpy.ndarray): Les coefficients de distorsion.
+        newcameramtx (numpy.ndarray): La nouvelle matrice de caméra optimisée.
+        roi (tuple): La région d'intérêt (x, y, w, h) pour recadrer l'image.
+
+    Returns:
+        numpy.ndarray: L'image corrigée et recadrée.
+    """
+    # Applique la correction de distorsion à l'image
+    img_undistorted = cv2.undistort(img, camera_matrix, dist_coeffs, None, newcameramtx)
+
+    # Recadre l'image selon le ROI pour éliminer les bordures noires
+    x, y, w, h = roi
+    img_cropped = img_undistorted[y : y + h, x : x + w]
+
+    return img_cropped
