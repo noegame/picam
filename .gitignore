@@ -1,10 +1,14 @@
-logs/
+# folder exclusions
 pictures/
 .venv/
 .env/
+
+# file exclusions
 *.log
 *code-workspace
 *__pycache__/
+
+# protection of wifi passwords
 wifi_config.json
-raspberry/setup/setup_wifi.sh
-raspberry/setup/wifi.json
+setup_wifi.sh
+wifi.json

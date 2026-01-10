@@ -78,7 +78,7 @@ FLASK_PORT = 5000
 # Directory Paths
 # ---------------------------------------------------------------------------
 
-PROJECT_DIR = Path(__file__).resolve().parents[3]
+PROJECT_DIR = Path(__file__).resolve().parents[2]
 RASPBERRY_DIR = PROJECT_DIR / "raspberry"
 PICTURES_DIR = PROJECT_DIR / "pictures"
 CAMERA_DIR = PICTURES_DIR / "camera"
