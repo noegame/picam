@@ -78,7 +78,7 @@ class PiCamera:
         try:
             pictures_dir.mkdir(parents=True, exist_ok=True)
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
-            filename = f"{timestamp}_capture.jpg"
+            filename = f"{timestamp}.jpg"
             filepath = pictures_dir / filename
             image_array = self.capture_array()
             self.camera.capture_file(str(filepath))
@@ -91,7 +91,7 @@ class PiCamera:
     def close(self):
         """Ferme et nettoie la caméra proprement."""
         try:
-            if hasattr(self, 'camera') and self.camera is not None:
+            if hasattr(self, "camera") and self.camera is not None:
                 self.camera.stop()
                 self.camera.close()
                 logger.info("Caméra fermée correctement.")

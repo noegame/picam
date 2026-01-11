@@ -2,6 +2,7 @@
 pictures/*
 .venv/
 .env/
+.vscode/
 bin/
 build/
 
