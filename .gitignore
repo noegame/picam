@@ -5,6 +5,7 @@ pictures/*
 .vscode/
 bin/
 build/
+calibrations/*
 
 # file exclusions
 *.log
