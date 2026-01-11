@@ -40,14 +40,25 @@ def main():
 
     try:
         image_width, image_height = config.get_camera_resolution()
-        output_path = config.get_output_directory() / "calibration"
+        output_path = (
+            config.get_pictures_directory()
+            / "calibration"
+            / f"{datetime.now().strftime('%Y%m%d')}"
+        )
+
+        # Créer le répertoire de sortie s'il n'existe pas
+        output_path.mkdir(parents=True, exist_ok=True)
+        logger.info(f"Répertoire de sortie des images : {output_path}")
 
         # Initialiser la caméra en mode still (haute qualité)
         logger.info(
             f"Initialisation de la caméra avec une résolution de {image_width}x{image_height}..."
         )
         cam = get_camera(
-            w=image_width, h=image_height, config_mode="still", use_fake_camera=False
+            w=image_width,
+            h=image_height,
+            camera=config.CameraMode.PI,
+            camera_param="still",
         )
         logger.info("✓ Caméra initialisée en mode STILL (haute qualité)")
 

@@ -139,11 +139,6 @@ def get_logging_level():
 # ---------------------------------------------------------------------------
 
 
-def get_output_directory():
-    """Returns the output directory path."""
-    return PICTURES_DIR
-
-
 def get_camera_directory():
     """Returns the camera output directory path."""
     return CAMERA_DIR
