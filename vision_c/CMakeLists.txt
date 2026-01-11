@@ -5,22 +5,44 @@ project(VisionC)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 11)
 
-# Find OpenCV
+# Find dependencies
 find_package(OpenCV REQUIRED)
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(LIBCAMERA REQUIRED libcamera)
 
-# Include directories
+# Global include directory for public headers
+include_directories(${CMAKE_SOURCE_DIR}/include)
 include_directories(${OpenCV_INCLUDE_DIRS})
-include_directories(src/test_wrapper)
+include_directories(${LIBCAMERA_INCLUDE_DIRS})
 
-# Create the wrapper library
+# ===== WRAPPER LIBRARIES =====
+
+# OpenCV wrapper library
 add_library(opencv_wrapper STATIC
-    src/test_wrapper/opencv_wrapper.cpp
-    src/test_wrapper/opencv_wrapper.h
+    src/wrappers/opencv_wrapper.cpp
+    include/opencv_wrapper.h
 )
 target_link_libraries(opencv_wrapper ${OpenCV_LIBS})
 
-# Create the grayscale converter executable
-add_executable(grayscale_converter
-    src/test_wrapper/grayscale_converter.c
+# libcamera wrapper library (placeholder)
+add_library(libcamera_wrapper STATIC
+    src/wrappers/libcamera_wrapper.cpp
+    include/libcamera_wrapper.h
 )
-target_link_libraries(grayscale_converter opencv_wrapper ${OpenCV_LIBS})
+target_link_libraries(libcamera_wrapper ${LIBCAMERA_LIBRARIES})
+
+# ===== MAIN APPLICATION =====
+
+add_executable(vision_main
+    src/main.c
+)
+target_link_libraries(vision_main 
+    opencv_wrapper
+    libcamera_wrapper
+)
+
+# ===== UTILITY APPS =====
+add_subdirectory(apps)
+
+# ===== TESTS =====
+add_subdirectory(tests)

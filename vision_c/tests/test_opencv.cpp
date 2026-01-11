@@ -1,6 +1,9 @@
 #include <opencv2/opencv.hpp>
 #include <iostream>
 
+/**
+ * Test opencv C++ by converting an image to grayscale
+ */
 int main(int argc, char** argv) {
     // Check if image path is provided
     if (argc < 2) {
