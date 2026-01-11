@@ -6,6 +6,12 @@ add_executable(grayscale_converter
 )
 target_link_libraries(grayscale_converter opencv_wrapper)
 
+# Grayscale converter
+add_executable(detect_aruco
+    detect_aruco.c
+)
+target_link_libraries(detect_aruco opencv_wrapper)
+
 # Camera capture application (not yet implemented)
 # add_executable(camera_capture camera_capture.c)
 # target_link_libraries(camera_capture opencv_wrapper libcamera_wrapper)
