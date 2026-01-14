@@ -13,6 +13,7 @@ logging, feature toggles, and directory paths.
 
 from enum import Enum
 from pathlib import Path
+from vision_python.src.aruco import aruco
 
 # ---------------------------------------------------------------------------
 # Enums and Constants
@@ -33,18 +34,20 @@ DISABLE = False
 # ---------------------------------------------------------------------------
 
 use_unround = True  # Désarrondissement de l'image (correction de l'effet fish-eye)
+use_clahe = False  # Égalisation d'histogramme adaptative, False sauf éclairage variable
+use_binarization = False  # Binarisation de l'image pour améliorer le contraste
 
 # Prétraitement optimal
 sharpen_alpha = 1.5  # Contraste
 sharpen_beta = -0.5  # Netteté
 sharpen_gamma = 0  # Luminosité
-use_clahe = False  # Égalisation d'histogramme adaptative, False sauf éclairage variable
 
 # Détection ArUco optimale
 adaptive_thresh_constant = 7  # Ajustement aux conditions d'éclairage
-min_marker_perimeter_rate = 0.03  # Taille minimale du marqueur
+min_marker_perimeter_rate = 0.01  # Taille minimale du marqueur
 max_marker_perimeter_rate = 4.0  # Taille maximale du marqueur
-polygonal_approx_accuracy_rate = 0.03  # Précision de détection des coins
+polygonal_approx_accuracy_rate = 0.1  # Précision de détection des coins
+
 
 # ---------------------------------------------------------------------------
 # Camera Configuration
@@ -52,7 +55,7 @@ polygonal_approx_accuracy_rate = 0.03  # Précision de détection des coins
 
 CAMERA_WIDTH = 4000
 CAMERA_HEIGHT = 4000
-CAMERA = CameraMode.EMULATED
+CAMERA = CameraMode.PI
 
 # ---------------------------------------------------------------------------
 # Logging Configuration
@@ -84,10 +87,19 @@ CAMERA_DIR = PICTURES_DIR / "camera"
 LOG_DIR = PROJECT_DIR / "logs"
 VISION_DIR = PROJECT_DIR / "vision_python"
 CALIBRATION_DIR = VISION_DIR / "config" / "calibrations"
-CALIBRATION_FILE = (
-    VISION_DIR / "config" / "calibrations" / "camera_calibration_2000x2000.npz"
-)
+CALIBRATION_FILE = CALIBRATION_DIR / "80_lens" / "camera_calibration_4000x4000.npz"
 EMULATED_CAM_DIR = CAMERA_DIR / "2026-01-09-playground-ready"
+
+
+# ---------------------------------------------------------------------------
+# Fixed Aruco marker positions
+# ---------------------------------------------------------------------------
+
+# Define destination points (real world coordinates in mm)
+A1 = aruco.Aruco(600, 600, 1, 20)
+B1 = aruco.Aruco(1400, 600, 1, 22)
+C1 = aruco.Aruco(600, 2400, 1, 21)
+D1 = aruco.Aruco(1400, 2400, 1, 23)
 
 # ---------------------------------------------------------------------------
 # Getter Functions
@@ -132,6 +144,27 @@ def get_flask_server_config():
 def get_logging_level():
     """Returns the logging level."""
     return LOG_LEVEL
+
+
+def get_image_processing_params():
+    """Returns a dictionary of image processing parameters."""
+    return {
+        "use_unround": use_unround,
+        "use_clahe": use_clahe,
+        "use_binarization": use_binarization,
+        "sharpen_alpha": sharpen_alpha,
+        "sharpen_beta": sharpen_beta,
+        "sharpen_gamma": sharpen_gamma,
+        "adaptive_thresh_constant": adaptive_thresh_constant,
+        "min_marker_perimeter_rate": min_marker_perimeter_rate,
+        "max_marker_perimeter_rate": max_marker_perimeter_rate,
+        "polygonal_approx_accuracy_rate": polygonal_approx_accuracy_rate,
+    }
+
+
+def get_fixed_aruco_positions():
+    """Returns a list of fixed ArUco marker positions."""
+    return [A1, B1, C1, D1]
 
 
 # ---------------------------------------------------------------------------

@@ -20,6 +20,11 @@ import sys
 import cv2
 import numpy as np
 from pathlib import Path
+from vision_python.config import config
+
+img_input_dir = config.get_pictures_directory() / "calibration" / "2026-01-14"
+img_output_dir = config.get_debug_directory() / "calibration"
+output_dir = config.get_vision_directory() / "config" / "calibrations" / "80_lens"
 
 
 def collect_image_paths(images_dir):
@@ -31,7 +36,7 @@ def collect_image_paths(images_dir):
     return paths
 
 
-def calibrate_from_images(image_paths, pattern_size, square_size):
+def calibrate_from_images(image_paths, pattern_size, square_size, debug_dir=None):
     cols, rows = pattern_size
     objp = np.zeros((rows * cols, 3), np.float32)
     # Note: grid coordinates: (0,0,0), (1,0,0), ... (cols-1,rows-1,0) scaled by square_size
@@ -41,7 +46,7 @@ def calibrate_from_images(image_paths, pattern_size, square_size):
     imgpoints = []  # 2d points in image plane
 
     used_images = []
-    for p in image_paths:
+    for idx, p in enumerate(image_paths):
         img = cv2.imread(p, cv2.IMREAD_COLOR)
         if img is None:
             print(f"Warning: cannot read {p}", file=sys.stderr)
@@ -60,6 +65,16 @@ def calibrate_from_images(image_paths, pattern_size, square_size):
             objpoints.append(objp)
             imgpoints.append(corners_refined)
             used_images.append(p)
+
+            # Sauvegarder une image de debug avec les coins détectés
+            if debug_dir:
+                img_with_corners = img.copy()
+                cv2.drawChessboardCorners(
+                    img_with_corners, (cols, rows), corners_refined, found
+                )
+                debug_filename = f"detected_corners_{idx:03d}.jpg"
+                debug_path = os.path.join(debug_dir, debug_filename)
+                cv2.imwrite(debug_path, img_with_corners)
         else:
             print(f"Chessboard not found in {p}", file=sys.stderr)
 
@@ -125,23 +140,27 @@ def undistort_example(image_path, camera_matrix, dist_coeffs, out_path=None):
 
 def main():
     # --- Paramètres de calibration ---
-    repo_root = Path(__file__).resolve().parents[2]
-    images_dir = repo_root / "output" / "calibration"
     pattern_str = "9x6"
     square_size = 0.025
 
     cols, rows = map(int, pattern_str.split("x"))
 
-    print(f"Recherche des images de calibration dans : {images_dir}")
-    image_paths = collect_image_paths(str(images_dir))
+    print(f"Recherche des images de calibration dans : {img_input_dir}")
+    image_paths = collect_image_paths(str(img_input_dir))
     if not image_paths:
-        print(f"Aucune image trouvée dans {images_dir}", file=sys.stderr)
+        print(f"Aucune image trouvée dans {img_input_dir}", file=sys.stderr)
         sys.exit(1)
 
     print(
         f"Found {len(image_paths)} images, trying to detect chessboard {cols}x{rows}..."
     )
-    result = calibrate_from_images(image_paths, (cols, rows), square_size)
+
+    # Créer le dossier de debug avant la calibration
+    img_output_dir.mkdir(parents=True, exist_ok=True)
+
+    result = calibrate_from_images(
+        image_paths, (cols, rows), square_size, debug_dir=str(img_output_dir)
+    )
 
     # Print & save
     print("Calibration RMS error (returned by calibrateCamera):", result["ret"])
@@ -151,10 +170,21 @@ def main():
     print("Distortion coefficients:\n", result["dist_coeffs"].ravel())
     print("Used images:", len(result["used_images"]))
 
+    # Créer le dossier de sortie s'il n'existe pas
+    output_dir.mkdir(parents=True, exist_ok=True)
+
     # Créer le nom du fichier avec la résolution
     img_width, img_height = result["image_size"]
-    output_filename = f"camera_calibration_{img_width}x{img_height}.npz"
-    output_file = repo_root / "raspberry" / "vision_python" / "config" / output_filename
+    base_filename = f"camera_calibration_{img_width}x{img_height}"
+    output_filename = f"{base_filename}.npz"
+    output_file = output_dir / output_filename
+
+    # Gérer les fichiers existants en ajoutant (2), (3), etc.
+    counter = 2
+    while output_file.exists():
+        output_filename = f"{base_filename} ({counter}).npz"
+        output_file = output_dir / output_filename
+        counter += 1
 
     np.savez(
         str(output_file),
@@ -171,9 +201,7 @@ def main():
     # Optional: undistort and save first used image for quick check
     try:
         ex_path = result["used_images"][0]
-        output_dir = repo_root / "output" / "calibration_result"
-        output_dir.mkdir(parents=True, exist_ok=True)
-        undistorted_file = output_dir / "undistorted_example.png"
+        undistorted_file = img_output_dir / "undistorted_example.png"
         und = undistort_example(
             ex_path,
             result["camera_matrix"],

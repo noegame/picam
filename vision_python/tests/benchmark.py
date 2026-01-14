@@ -1,14 +1,24 @@
 #!/usr/bin/env python3
 
 """
-test_img_preprocessing_and_detection.py
+benchmark.py
 
-Tests the entire pictures processing pipeline and aruco detection using directly opencv.
+Il y a 38 tags Aruco à détecter dans le jeu d'images test (6 noirs, 16 jaunes, 16 bleues).
+Ce script traite un dossier d'images, détecte les marqueurs Aruco dans chaque image,
+et génère un rapport de performance indiquant le nombre total de marqueurs détectés,
+ainsi que le temps moyen de traitement par image.
 
-- Take a folder of pictures as input, process each picture to detect aruco markers, and print the detected markers' IDs and positions.
-- save the different steps images in an output folder for visual verification.
-- save annotaded pictures with detected markers highlighted.
+Le rapport final :
+- nombre moyen de tags détectés par image
+- nombre de tag noirs détectés par image
+- nombre de tag jaunes détectés par image
+- nombre de tag bleus détectés par image
+- temps moyen de traitement par image.
+
+
+dossier jeu d'image de test : 2026-01-09-playground-ready
 """
+
 
 # ---------------------------------------------------------------------------
 # Imports
@@ -16,13 +26,21 @@ Tests the entire pictures processing pipeline and aruco detection using directly
 
 import cv2
 import numpy as np
+import time
 from vision_python.config import config
 from vision_python.src.aruco import aruco
 from vision_python.src.img_processing import unround_img
 
+# ---------------------------------------------------------------------------
+# Options
+# ---------------------------------------------------------------------------
+
+rejected_marker = True  # Draw rejected markers on debug images
+resume = True  # Print summary of detections instead of detailed info
+save_debug_images = False  # Save debug images at each processing step
 
 # ---------------------------------------------------------------------------
-# parameters
+# Image Processing Parameters
 # ---------------------------------------------------------------------------
 
 # Get image processing parameters from config
@@ -40,12 +58,9 @@ min_marker_perimeter_rate = img_params["min_marker_perimeter_rate"]
 max_marker_perimeter_rate = img_params["max_marker_perimeter_rate"]
 polygonal_approx_accuracy_rate = img_params["polygonal_approx_accuracy_rate"]
 
-# Test-specific parameters
-rejected_marker = True
-resume = True
 
 # ---------------------------------------------------------------------------
-# Configuration
+# Paths and Directories
 # ---------------------------------------------------------------------------
 
 calibration_file = config.get_camera_calibration_file()
@@ -54,9 +69,7 @@ img_height = config.get_camera_height()
 input_pict_dir = (
     config.get_camera_directory() / "2026-01-09-playground-ready"
 )  # "2026-01-09-playground-ready"
-debug_pict_dir = (
-    config.get_debug_directory() / "output_test"
-)  # "2026-01-09-playground-ready"
+debug_pict_dir = config.get_debug_directory() / "CCC"  # "2026-01-09-playground-ready"
 img_size = (img_width, img_height)
 
 # ---------------------------------------------------------------------------
@@ -67,14 +80,10 @@ img_size = (img_width, img_height)
 fixed_markers = config.get_fixed_aruco_positions()
 fixed_ids = [marker.aruco_id for marker in fixed_markers]
 
-# Fixed marker positions in real world coordinates (mm)
-# Camera is positioned outside the terrain, middle of the 3000mm side
-# Terrain: 3000mm (width/X) x 2000mm (depth/Y)
-# Swapping X and Y to match camera orientation
-FIXED_MARKER_20 = aruco.Aruco(600, 600, 1, 20)
-FIXED_MARKER_21 = aruco.Aruco(2400, 600, 1, 21)
-FIXED_MARKER_22 = aruco.Aruco(600, 1400, 1, 22)
-FIXED_MARKER_23 = aruco.Aruco(2400, 1400, 1, 23)
+A1 = aruco.Aruco(600, 600, 1, 20)
+B1 = aruco.Aruco(1400, 600, 1, 22)
+C1 = aruco.Aruco(600, 2400, 1, 21)
+D1 = aruco.Aruco(1400, 2400, 1, 23)
 
 # ---------------------------------------------------------------------------
 # ArUco detection preparation
@@ -111,14 +120,15 @@ img_processing_step = 0
 def save_debug_image(
     base_name: str, comment: str, img_processing_step: int, img: np.ndarray
 ) -> int:
-    dir = debug_pict_dir
-    filename = build_filename(
-        dir,
-        base_name,
-        comment,
-        img_processing_step,
-    )
-    save(filename, img)
+    if save_debug_images:
+        dir = debug_pict_dir
+        filename = build_filename(
+            dir,
+            base_name,
+            comment,
+            img_processing_step,
+        )
+        save(filename, img)
     return img_processing_step + 1
 
 
@@ -349,123 +359,6 @@ def annotate_image_with_rejected_markers(img: np.ndarray, rejected: list) -> np.
     return rejected_img
 
 
-def mask_playground_area(
-    img: np.ndarray, detected_markers: list, fixed_ids: set
-) -> tuple:
-    """Create a mask that only keeps the playground area based on fixed markers.
-
-    The playground dimensions are 3000x2000mm. Using the 4 fixed markers detected,
-    we can compute the inverse perspective transform to find the 4 corners of the
-    playground in the image and mask everything outside.
-
-    Args:
-        img: Input image (grayscale or BGR)
-        detected_markers: List of (marker, corners) tuples
-        fixed_ids: Set of fixed marker IDs
-
-    Returns:
-        Tuple of (masked_image, found_all_markers, mask)
-    """
-    tags_from_img = [marker for marker, corners in detected_markers]
-
-    # Step 1: Find coordinates of fixed tags on image
-    # Define explicit order: A1(20), B1(22), C1(21), D1(23)
-    fixed_marker_order = [20, 22, 21, 23]
-
-    # Source points from detected markers in specific order (image coordinates)
-    src_points = []
-    for fixed_id in fixed_marker_order:
-        found = False
-        for tag in tags_from_img:
-            if tag.aruco_id == fixed_id:
-                src_points.append([tag.x, tag.y])
-                found = True
-                print(
-                    f"  Marker {fixed_id} found at image coords: ({tag.x:.1f}, {tag.y:.1f})"
-                )
-                break
-        if not found:
-            return img, False, None
-
-    if len(src_points) != 4:
-        return img, False, None
-
-    src_points = np.array(src_points, dtype=np.float32)
-
-    # Destination points in real world coordinates (matching the order above)
-    dst_points = np.array(
-        [
-            [FIXED_MARKER_20.x, FIXED_MARKER_20.y],  # 20: (600, 600)
-            [FIXED_MARKER_22.x, FIXED_MARKER_22.y],  # 22: (1400, 600)
-            [FIXED_MARKER_21.x, FIXED_MARKER_21.y],  # 21: (600, 2400)
-            [FIXED_MARKER_23.x, FIXED_MARKER_23.y],  # 23: (1400, 2400)
-        ],
-        dtype=np.float32,
-    )
-
-    print(f"\nMarker positions (real world):")
-    print(f"  A1(20): {FIXED_MARKER_20.x}, {FIXED_MARKER_20.y}")
-    print(f"  B1(22): {FIXED_MARKER_22.x}, {FIXED_MARKER_22.y}")
-    print(f"  C1(21): {FIXED_MARKER_21.x}, {FIXED_MARKER_21.y}")
-    print(f"  D1(23): {FIXED_MARKER_23.x}, {FIXED_MARKER_23.y}")
-
-    # Step 2: Compute perspective transformation matrix (image -> real world)
-    perspective_matrix = cv2.getPerspectiveTransform(src_points, dst_points)
-
-    # Step 3: Compute inverse transformation (real world -> image)
-    inverse_matrix = np.linalg.inv(perspective_matrix)
-
-    # Step 4: Define playground corners in real world coordinates (3000x2000mm)
-    # Terrain: 3000mm (width/X) x 2000mm (depth/Y)
-    # Camera positioned at middle of 3000mm side, looking at the terrain
-    playground_corners_real = np.array(
-        [
-            [[0, 0]],  # Corner 1
-            [[0, 2000]],  # Corner 2
-            [[3000, 2000]],  # Corner 3
-            [[3000, 0]],  # Corner 4
-        ],
-        dtype=np.float32,
-    )
-
-    print(f"\nPlayground corners (real world): 3000x2000mm")
-    print(f"  Corner 1: (0, 0)")
-    print(f"  Corner 2: (0, 2000)")
-    print(f"  Corner 3: (3000, 2000)")
-    print(f"  Corner 4: (3000, 0)")
-
-    # Transform playground corners to image coordinates
-    playground_corners_img = cv2.perspectiveTransform(
-        playground_corners_real, inverse_matrix
-    )
-    playground_corners_img = playground_corners_img.reshape(-1, 2).astype(np.int32)
-
-    print(f"\nPlayground corners (image coordinates):")
-    for i, corner in enumerate(playground_corners_img):
-        print(f"  Corner {i+1}: ({corner[0]}, {corner[1]})")
-
-    # Step 5: Create mask with the same shape as the image
-    if len(img.shape) == 2:
-        # Grayscale image
-        mask = np.zeros(img.shape[:2], dtype=np.uint8)
-    else:
-        # BGR image
-        mask = np.zeros(img.shape[:2], dtype=np.uint8)
-
-    # Fill the playground area with white
-    cv2.fillPoly(mask, [playground_corners_img], 255)
-
-    # Apply mask to image
-    if len(img.shape) == 2:
-        # Grayscale image
-        masked_img = cv2.bitwise_and(img, img, mask=mask)
-    else:
-        # BGR image
-        masked_img = cv2.bitwise_and(img, img, mask=mask)
-
-    return masked_img, True, mask
-
-
 def compute_perspective_transform(detected_markers: list, fixed_ids: set) -> tuple:
     """Compute perspective transformation matrix from fixed markers.
 
@@ -478,34 +371,26 @@ def compute_perspective_transform(detected_markers: list, fixed_ids: set) -> tup
     """
     tags_from_img = [marker for marker, corners in detected_markers]
 
-    # Define explicit order: A1(20), B1(22), C1(21), D1(23)
-    # A1: top-left, B1: top-right, C1: bottom-left, D1: bottom-right
-    fixed_marker_order = [20, 22, 21, 23]
-
-    # Source points from detected markers in specific order
+    # Source points from detected markers
     src_points = []
-    for fixed_id in fixed_marker_order:
-        found = False
+    for fixed_id in fixed_ids:
         for tag in tags_from_img:
             if tag.aruco_id == fixed_id:
                 src_points.append([tag.x, tag.y])
-                found = True
                 break
-        if not found:
-            return None, False
 
     if len(src_points) != 4:
         return None, False
 
     src_points = np.array(src_points, dtype=np.float32)
 
-    # Destination points in real world coordinates (matching the order above)
+    # Destination points in real world coordinates
     dst_points = np.array(
         [
-            [FIXED_MARKER_20.x, FIXED_MARKER_20.y],  # 20: (600, 600)
-            [FIXED_MARKER_22.x, FIXED_MARKER_22.y],  # 22: (1400, 600)
-            [FIXED_MARKER_21.x, FIXED_MARKER_21.y],  # 21: (600, 2400)
-            [FIXED_MARKER_23.x, FIXED_MARKER_23.y],  # 23: (1400, 2400)
+            [A1.x, A1.y],
+            [B1.x, B1.y],
+            [C1.x, C1.y],
+            [D1.x, D1.y],
         ],
         dtype=np.float32,
     )
@@ -637,6 +522,17 @@ def main():
     )
 
     # ---------------------------------------------------------------------------
+    # Statistics tracking
+    # ---------------------------------------------------------------------------
+
+    total_tags_detected = 0
+    total_yellow_tags = 0
+    total_blue_tags = 0
+    total_black_tags = 0
+    total_processing_time = 0.0
+    images_processed = 0
+
+    # ---------------------------------------------------------------------------
     # Process each image
     # ---------------------------------------------------------------------------
 
@@ -648,6 +544,9 @@ def main():
 
         # Get base filename without extension for output files
         base_name = img_file.stem
+
+        # Start timing
+        start_time = time.time()
 
         try:
             # ---------------------------------------------------------------------------
@@ -683,7 +582,7 @@ def main():
                 step = save_debug_image(base_name, "thresholded", step, img)
 
             # ---------------------------------------------------------------------------
-            # ArUco detection (first pass - detect fixed markers)
+            # ArUco detection
             # ---------------------------------------------------------------------------
 
             corners_list, ids, rejected = detect_aruco_markers(img, aruco_detector)
@@ -694,39 +593,6 @@ def main():
                 detected_markers = create_marker_objects(corners_list, ids)
 
             tags_from_img = [marker for marker, corners in detected_markers]
-
-            # ---------------------------------------------------------------------------
-            # Mask playground area based on fixed markers
-            # ---------------------------------------------------------------------------
-
-            print(f"\n🔍 Computing playground mask...")
-            masked_img, found_all_fixed, mask = mask_playground_area(
-                img, detected_markers, fixed_ids
-            )
-
-            if found_all_fixed:
-                # Save the mask itself for debugging
-                step = save_debug_image(base_name, "mask", step, mask)
-                step = save_debug_image(
-                    base_name, "masked_playground", step, masked_img
-                )
-                print(f"✅ Playground mask applied successfully\n")
-                # Re-detect markers on masked image for better accuracy
-                corners_list, ids, rejected = detect_aruco_markers(
-                    masked_img, aruco_detector
-                )
-
-                if ids is None or len(ids) == 0:
-                    detected_markers = []
-                else:
-                    detected_markers = create_marker_objects(corners_list, ids)
-
-                tags_from_img = [marker for marker, corners in detected_markers]
-            else:
-                print(
-                    f"⚠️  Warning: Not all fixed markers found for playground masking."
-                )
-                print("   Skipping playground mask step.")
 
             # ---------------------------------------------------------------------------
             # Annotate detected markers on image
@@ -769,12 +635,69 @@ def main():
             else:
                 print_detailed_markers(detected_markers)
 
+            # ---------------------------------------------------------------------------
+            # Update statistics
+            # ---------------------------------------------------------------------------
+
+            # End timing
+            end_time = time.time()
+            processing_time = end_time - start_time
+
+            # Count tags by color
+            tags_from_img = [marker for marker, corners in detected_markers]
+            yellow_count = len([tag for tag in tags_from_img if tag.aruco_id == 47])
+            blue_count = len([tag for tag in tags_from_img if tag.aruco_id == 36])
+            black_count = len([tag for tag in tags_from_img if tag.aruco_id == 41])
+
+            # Update totals
+            total_tags_detected += len(tags_from_img)
+            total_yellow_tags += yellow_count
+            total_blue_tags += blue_count
+            total_black_tags += black_count
+            total_processing_time += processing_time
+            images_processed += 1
+
+            print(f"\n⏱️  Temps de traitement: {processing_time:.3f}s")
+
         except ValueError as e:
             print(f"❌ Error processing {img_file.name}: {e}")
             continue
 
+    # ---------------------------------------------------------------------------
+    # Print final benchmark report
+    # ---------------------------------------------------------------------------
+
     print(f"\n{'='*80}")
-    print(f"Processing complete! Processed {len(image_files)} image(s)")
+    print(f"RAPPORT FINAL DE PERFORMANCE")
+    print(f"{'='*80}")
+
+    if images_processed > 0:
+        avg_tags = total_tags_detected / images_processed
+        avg_yellow = total_yellow_tags / images_processed
+        avg_blue = total_blue_tags / images_processed
+        avg_black = total_black_tags / images_processed
+        avg_time = total_processing_time / images_processed
+
+        print(f"\n📊 Images traitées: {images_processed}")
+        print(f"\n📈 DÉTECTIONS MOYENNES PAR IMAGE:")
+        print(f"  - Nombre moyen de tags détectés: {avg_tags:.2f}")
+        print(f"  - Nombre de tags jaunes: {avg_yellow:.2f}")
+        print(f"  - Nombre de tags bleus: {avg_blue:.2f}")
+        print(f"  - Nombre de tags noirs: {avg_black:.2f}")
+        print(f"\n⏱️  TEMPS MOYEN DE TRAITEMENT:")
+        print(f"  - Temps moyen par image: {avg_time:.3f}s")
+        print(f"  - Temps total: {total_processing_time:.3f}s")
+
+        print(f"\n📊 TOTAUX:")
+        print(f"  - Total tags détectés: {total_tags_detected}")
+        print(f"  - Total tags jaunes: {total_yellow_tags}")
+        print(f"  - Total tags bleus: {total_blue_tags}")
+        print(f"  - Total tags noirs: {total_black_tags}")
+    else:
+        print("\n⚠️  Aucune image n'a été traitée avec succès.")
+
+    print(f"\n{'='*80}")
+    print(f"Benchmark terminé!")
     print(f"{'='*80}")
 
 
