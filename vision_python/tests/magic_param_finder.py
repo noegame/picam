@@ -19,37 +19,15 @@ Information about eurobot competition 2026 rules :
 - the empty boxes have aruco marker 41 on both faces
 - at the beginning of the match the game elements are placed on the playground at known positions and orientations but we don't know which face is visible
 
-"""
-"""
+image preprocessing parameters to optimize :
+- sharpening (alpha, beta)
+- CLAHE (use or not, clip limit, tile size)
 
-
-## Optimisation des Paramètres
-
-### Stratégie de Test
-
-**Ordre de priorité :**
-1. **Correction distorsion** : Toujours activée (si calibration disponible)
-2. **Sharpening** : Test en premier (fort impact, faible coût)
-3. **Paramètres ArUco** : adaptive_const, min_perim (impact modéré)
-4. **CLAHE** : Test en dernier (coût élevé, impact variable)
-
-### Métriques d'Évaluation
-
-**Score composite :**
-```
-score = detection_rate × 50 + game_elements × 10 - position_error/50 - fixed_penalty
-```
-
-**Composantes :**
-- **detection_rate** : Proportion d'éléments de jeu détectés
-- **game_elements** : Nombre brut d'éléments détectés
-- **position_error** : Erreur moyenne de position (mm)
-- **fixed_penalty** : Pénalité si marqueurs fixes manquants (50 points par marqueur)
-
-**Objectif :** Maximiser les détections tout en minimisant l'erreur de position.
-
----
-
+aruco detection parameters to optimize :
+- adaptive threshold constant
+- min marker perimeter rate
+- max marker perimeter rate
+- polygonal approx accuracy rateZ
 """
 # ---------------------------------------------------------------------------
 # Imports
@@ -62,6 +40,14 @@ from dataclasses import dataclass
 from vision_python.config import config
 from vision_python.src.aruco import aruco
 from vision_python.src.aruco import aruco_initial_position
+from vision_python.src.img_processing import processing_pipeline as pipeline
+
+# ---------------------------------------------------------------------------
+# Options
+# ---------------------------------------------------------------------------
+input_img_dir = config.PICTURES_DIR / "camera" / "2026-01-09"
+output_img_dir = config.get_debug_directory() / "magic_param_finder_output"
+use_best_config = False
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -117,11 +103,6 @@ img_width = config.CAMERA_WIDTH
 img_height = config.CAMERA_HEIGHT
 img_size = (img_width, img_height)
 
-# Prepare input/output directories
-input_img_dir = config.PICTURES_DIR / "camera" / "2026-01-09"
-output_img_dir = (
-    config.RASPBERRY_DIR / "vision_python" / "tests" / "fixtures" / "output"
-)
 
 # ---------------------------------------------------------------------------
 # Parameter Search Space
@@ -152,6 +133,19 @@ class ArucoDetectionParams:
     min_corner_distance_rate: float = 0.05
     min_distance_to_border: int = 3
     corner_refinement_method: int = cv2.aruco.CORNER_REFINE_SUBPIX
+
+    def create_detector(self) -> cv2.aruco.ArucoDetector:
+        """Create an ArUco detector with these parameters"""
+        aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_50)
+        parameters = cv2.aruco.DetectorParameters()
+        parameters.cornerRefinementMethod = self.corner_refinement_method
+        parameters.adaptiveThreshConstant = self.adaptive_thresh_constant
+        parameters.minMarkerPerimeterRate = self.min_marker_perimeter_rate
+        parameters.maxMarkerPerimeterRate = self.max_marker_perimeter_rate
+        parameters.polygonalApproxAccuracyRate = self.polygonal_approx_accuracy_rate
+        parameters.minCornerDistanceRate = self.min_corner_distance_rate
+        parameters.minDistanceToBorder = self.min_distance_to_border
+        return cv2.aruco.ArucoDetector(aruco_dict, parameters)
 
 
 @dataclass
@@ -291,365 +285,303 @@ def calculate_detection_score(
     return num_detected, num_missed, avg_position_error, max_position_error, score
 
 
-def preprocess_image(img: np.ndarray, params: PreprocessingParams) -> np.ndarray:
-    """Apply preprocessing to the image based on parameters"""
-    # Convert to grayscale if needed
-    if len(img.shape) == 3:
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+def detect_and_process_with_pipeline(
+    img: np.ndarray,
+    preproc_params: PreprocessingParams,
+    detect_params: ArucoDetectionParams,
+) -> Tuple[List[aruco.Aruco], bool]:
+    """Use the pipeline to detect and process ArUco markers"""
+    # Create ArUco detector
+    aruco_detector = detect_params.create_detector()
 
-    # Apply CLAHE if enabled
-    if params.use_clahe:
-        clahe = cv2.createCLAHE(
-            clipLimit=params.clahe_clip_limit,
-            tileGridSize=(params.clahe_tile_size, params.clahe_tile_size),
+    # Define fixed markers for perspective transform
+    fixed_markers = [A1, B1, C1, D1]
+
+    # Define playground corners (in real world coordinates)
+    playground_corners = [
+        (A1.x, A1.y),
+        (B1.x, B1.y),
+        (D1.x, D1.y),
+        (C1.x, C1.y),
+    ]
+
+    # Call the pipeline
+    detected_markers, final_img, perspective_matrix, metadata = (
+        pipeline.process_image_for_aruco_detection(
+            img=img,
+            aruco_detector=aruco_detector,
+            camera_matrix=None,
+            dist_coeffs=None,
+            newcameramtx=None,
+            fixed_markers=fixed_markers,
+            playground_corners=playground_corners,
+            use_unround=False,
+            use_clahe=preproc_params.use_clahe,
+            use_thresholding=False,
+            sharpen_alpha=preproc_params.sharpen_alpha,
+            sharpen_beta=preproc_params.sharpen_beta,
+            sharpen_gamma=0.0,
+            use_mask_playground=False,
+            use_straighten_image=False,
+            save_debug_images=False,
+            debug_dir=None,
+            base_name="image",
+            apply_contrast_boost=False,
+            contrast_alpha=1.1,
         )
-        img = clahe.apply(img)
-
-    # Apply sharpening: original - blurred version
-    # Formula: sharpened = original * alpha + blurred * beta
-    # where beta should be negative to subtract the blur
-    blur = cv2.GaussianBlur(img, (5, 5), 0)
-    img = cv2.addWeighted(img, params.sharpen_alpha, blur, params.sharpen_beta, 0)
-
-    return img
-
-
-def detect_markers(
-    img: np.ndarray, params: ArucoDetectionParams
-) -> Tuple[List, np.ndarray, List]:
-    """Detect ArUco markers with given parameters"""
-    aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_50)
-
-    # Set detection parameters
-    parameters = cv2.aruco.DetectorParameters()
-    parameters.cornerRefinementMethod = params.corner_refinement_method
-    parameters.adaptiveThreshConstant = params.adaptive_thresh_constant
-    parameters.minMarkerPerimeterRate = params.min_marker_perimeter_rate
-    parameters.maxMarkerPerimeterRate = params.max_marker_perimeter_rate
-    parameters.polygonalApproxAccuracyRate = params.polygonal_approx_accuracy_rate
-    parameters.minCornerDistanceRate = params.min_corner_distance_rate
-    parameters.minDistanceToBorder = params.min_distance_to_border
-
-    # Create detector and detect markers
-    aruco_detector = cv2.aruco.ArucoDetector(aruco_dict, parameters)
-    corners_list, ids, rejected = aruco_detector.detectMarkers(img)
-
-    return corners_list, ids, rejected
-
-
-def process_detected_markers(corners_list, ids) -> List[aruco.Aruco]:
-    """Convert detected markers to Aruco objects"""
-    detected_markers = []
-
-    if ids is None or len(ids) == 0:
-        return detected_markers
-
-    ids = ids.flatten()
-    for corners, id_val in zip(corners_list, ids):
-        corners = corners.reshape((4, 2)).astype(np.float32)
-        cX = float(np.mean(corners[:, 0]))
-        cY = float(np.mean(corners[:, 1]))
-
-        # Calculate angle from top edge
-        dx = corners[1][0] - corners[0][0]
-        dy = corners[1][1] - corners[0][1]
-        angle = float(np.degrees(np.arctan2(dy, dx)))
-
-        # Normalize angle to [-180, 180] range
-        if angle > 180:
-            angle -= 360
-        elif angle < -180:
-            angle += 360
-
-        a = aruco.Aruco(cX, cY, 1, id_val, angle)
-        detected_markers.append(a)
-
-    return detected_markers
-
-
-def apply_perspective_transform(tags_from_img: List[aruco.Aruco]) -> bool:
-    """Apply perspective transformation to get real-world coordinates"""
-    # Source points from detected markers - use ordered list to ensure correct correspondence
-    # Order must match destination points: [A1(20), B1(22), C1(21), D1(23)]
-    ordered_ids = [20, 22, 21, 23]  # A1, B1, C1, D1
-    src_points = []
-
-    for fixed_id in ordered_ids:
-        found = False
-        for tag in tags_from_img:
-            if tag.aruco_id == fixed_id:
-                src_points.append([tag.x, tag.y])
-                found = True
-                break
-        if not found:
-            return False  # Missing required marker
-
-    if len(src_points) != 4:
-        return False
-
-    src_points = np.array(src_points, dtype=np.float32)
-
-    # Destination points in real world coordinates
-    # Order: A1(20), B1(22), C1(21), D1(23)
-    dst_points = np.array(
-        [
-            [A1.x, A1.y],  # ID 20
-            [B1.x, B1.y],  # ID 22
-            [C1.x, C1.y],  # ID 21
-            [D1.x, D1.y],  # ID 23
-        ],
-        dtype=np.float32,
     )
 
-    # Compute perspective transformation matrix
-    perspective_matrix = cv2.getPerspectiveTransform(src_points, dst_points)
+    # Extract Aruco objects from detected_markers
+    # detected_markers is a list of (marker, corners) tuples
+    tags_from_img = [marker for marker, corners in detected_markers]
 
-    # Transform detected tags to real world coordinates
-    for tag in tags_from_img:
-        img_point = np.array([[tag.x, tag.y]], dtype=np.float32)
-        img_point = np.array([img_point])
-        real_point = cv2.perspectiveTransform(img_point, perspective_matrix)
-        real_x, real_y = real_point[0][0]
-        tag.real_x = real_x
-        tag.real_y = real_y
+    # Check if perspective transform was successful
+    transform_success = metadata["perspective_transform_computed"]
 
-    return True
+    return tags_from_img, transform_success
 
 
 # ---------------------------------------------------------------------------
 # Parameter Search Implementation
 # ---------------------------------------------------------------------------
 
-# ---------------------------------------------------------------------------
-# Get all image files from input directory
-# ---------------------------------------------------------------------------
 
-image_extensions = {".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".tif"}
-image_files = [
-    f
-    for f in input_img_dir.iterdir()
-    if f.is_file() and f.suffix.lower() in image_extensions
-]
+def load_image_files(img_dir):
+    """Load all image files from the specified directory."""
+    image_extensions = {".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".tif"}
+    image_files = [
+        f
+        for f in img_dir.iterdir()
+        if f.is_file() and f.suffix.lower() in image_extensions
+    ]
 
-if not image_files:
-    raise ValueError(f"No image files found in {input_img_dir}")
+    if not image_files:
+        raise ValueError(f"No image files found in {img_dir}")
 
-print(f"Found {len(image_files)} image(s) to process")
+    print(f"Found {len(image_files)} image(s) to process")
+    return image_files
 
-# ---------------------------------------------------------------------------
-# Print ArUco Marker Information
-# ---------------------------------------------------------------------------
 
-print("\n" + "=" * 80)
-print("ARUCO MARKER CONFIGURATION")
-print("=" * 80)
-print("\nFixed Calibration Markers (for perspective transform):")
-print(f"  IDs: {sorted(FIXED_IDS)}")
-print("\nGame Element Markers (Eurobot 2026):")
-print(f"  ID {BOX_BLUE_FACE_ID}: Box - Blue Face")
-print(f"  ID {BOX_YELLOW_FACE_ID}: Box - Yellow Face")
-print(f"  ID {EMPTY_BOX_ID}: Empty Box (both faces)")
-print("\nOptimization Goal:")
-print("  - Detect all 4 fixed markers (required for perspective transform)")
-print("  - Maximize detection of game element markers")
-print("  - Minimize position errors for markers with known ground truth")
+def print_marker_configuration():
+    """Print information about ArUco marker configuration."""
+    print("\n" + "=" * 80)
+    print("ARUCO MARKER CONFIGURATION")
+    print("=" * 80)
+    print("\nFixed Calibration Markers (for perspective transform):")
+    print(f"  IDs: {sorted(FIXED_IDS)}")
+    print("\nGame Element Markers (Eurobot 2026):")
+    print(f"  ID {BOX_BLUE_FACE_ID}: Box - Blue Face")
+    print(f"  ID {BOX_YELLOW_FACE_ID}: Box - Yellow Face")
+    print(f"  ID {EMPTY_BOX_ID}: Empty Box (both faces)")
+    print("\nOptimization Goal:")
+    print("  - Detect all 4 fixed markers (required for perspective transform)")
+    print("  - Maximize detection of game element markers")
+    print("  - Minimize position errors for markers with known ground truth")
 
-# ---------------------------------------------------------------------------
-# Parameter Search
-# ---------------------------------------------------------------------------
 
-print("\n" + "=" * 80)
-print("STARTING PARAMETER OPTIMIZATION")
-print("=" * 80)
+def generate_test_configurations():
+    """Generate all parameter configurations to test."""
+    test_configs = []
 
-# Generate test configurations
-test_configs = []
+    # Test default configuration first
+    test_configs.append((PreprocessingParams(), ArucoDetectionParams()))
 
-# Test default configuration first
-test_configs.append((PreprocessingParams(), ArucoDetectionParams()))
-
-# Test variations of preprocessing
-for sharpen_alpha in [1.0, 1.5, 2.0]:
-    for sharpen_beta in [-0.5, -0.7]:
-        test_configs.append(
-            (
-                PreprocessingParams(
-                    sharpen_alpha=sharpen_alpha, sharpen_beta=sharpen_beta
-                ),
-                ArucoDetectionParams(),
+    # Test variations of preprocessing
+    for sharpen_alpha in [1.0, 1.5, 2.0]:
+        for sharpen_beta in [-0.5, -0.7]:
+            test_configs.append(
+                (
+                    PreprocessingParams(
+                        sharpen_alpha=sharpen_alpha, sharpen_beta=sharpen_beta
+                    ),
+                    ArucoDetectionParams(),
+                )
             )
+
+    # Test variations of CLAHE
+    for use_clahe in [True]:
+        for clip_limit in [2.0, 3.0]:
+            test_configs.append(
+                (
+                    PreprocessingParams(
+                        use_clahe=use_clahe, clahe_clip_limit=clip_limit
+                    ),
+                    ArucoDetectionParams(),
+                )
+            )
+
+    # Test variations of ArUco detection parameters
+    for adaptive_const in [5, 7, 10]:
+        for min_perim in [0.01, 0.03, 0.05]:
+            test_configs.append(
+                (
+                    PreprocessingParams(),
+                    ArucoDetectionParams(
+                        adaptive_thresh_constant=adaptive_const,
+                        min_marker_perimeter_rate=min_perim,
+                    ),
+                )
+            )
+
+    return test_configs
+
+
+def run_parameter_search(test_configs, image_files):
+    """Run parameter optimization search across all configurations."""
+    print("\n" + "=" * 80)
+    print("STARTING PARAMETER OPTIMIZATION")
+    print("=" * 80)
+    print(f"\nTesting {len(test_configs)} parameter configurations...\n")
+
+    best_results = []
+    best_overall_score = -float("inf")
+    best_config = None
+
+    # Test each configuration
+    for config_idx, (preproc_params, detect_params) in enumerate(test_configs):
+        print(f"\n[{config_idx + 1}/{len(test_configs)}] Testing configuration:")
+        print(
+            f"  Preprocessing: sharpen=({preproc_params.sharpen_alpha}, {preproc_params.sharpen_beta}), "
+            f"CLAHE={preproc_params.use_clahe}"
+        )
+        print(
+            f"  Detection: adaptive_const={detect_params.adaptive_thresh_constant}, "
+            f"min_perim={detect_params.min_marker_perimeter_rate}"
         )
 
-# Test variations of CLAHE
-for use_clahe in [True]:
-    for clip_limit in [2.0, 3.0]:
-        test_configs.append(
-            (
-                PreprocessingParams(use_clahe=use_clahe, clahe_clip_limit=clip_limit),
-                ArucoDetectionParams(),
+        total_detected = 0
+        total_missed = 0
+        total_score = 0.0
+        all_position_errors = []
+        num_images_processed = 0
+
+        # Test configuration on all images
+        for img_file in image_files:
+            # Load image
+            img = cv2.imread(str(img_file))
+            if img is None:
+                continue
+
+            # Use pipeline to detect and process markers
+            detected_markers, transform_success = detect_and_process_with_pipeline(
+                img, preproc_params, detect_params
             )
+
+            if transform_success:
+                # Calculate metrics
+                num_det, num_miss, avg_err, max_err, score = calculate_detection_score(
+                    detected_markers, GROUND_TRUTH_POSITIONS
+                )
+
+                total_detected += num_det
+                total_missed += num_miss
+                total_score += score
+                num_images_processed += 1
+                if avg_err != float("inf"):
+                    all_position_errors.append(avg_err)
+
+        # Calculate average metrics across all images
+        avg_score = total_score / len(image_files) if image_files else 0
+        avg_position_error = (
+            np.mean(all_position_errors) if all_position_errors else float("inf")
+        )
+        avg_tags_per_photo = (
+            total_detected / num_images_processed if num_images_processed > 0 else 0
         )
 
-# Test variations of ArUco detection parameters
-for adaptive_const in [5, 7, 10]:
-    for min_perim in [0.01, 0.03, 0.05]:
-        test_configs.append(
-            (
-                PreprocessingParams(),
-                ArucoDetectionParams(
-                    adaptive_thresh_constant=adaptive_const,
-                    min_marker_perimeter_rate=min_perim,
-                ),
-            )
+        result = DetectionResult(
+            num_detected=total_detected,
+            num_missed=total_missed,
+            avg_position_error=avg_position_error,
+            max_position_error=(
+                np.max(all_position_errors) if all_position_errors else float("inf")
+            ),
+            score=avg_score,
+            preprocessing_params=preproc_params,
+            detection_params=detect_params,
         )
 
-print(f"\nTesting {len(test_configs)} parameter configurations...\n")
+        best_results.append(result)
 
-best_results = []
-best_overall_score = -float("inf")
-best_config = None
+        print(
+            f"  Results: detected={total_detected}, missed={total_missed}, "
+            f"avg_tags_per_photo={avg_tags_per_photo:.1f}, "
+            f"avg_error={avg_position_error:.2f}mm, score={avg_score:.2f}"
+        )
 
-# Test each configuration
-for config_idx, (preproc_params, detect_params) in enumerate(test_configs):
-    print(f"\n[{config_idx + 1}/{len(test_configs)}] Testing configuration:")
-    print(
-        f"  Preprocessing: sharpen=({preproc_params.sharpen_alpha}, {preproc_params.sharpen_beta}), "
-        f"CLAHE={preproc_params.use_clahe}"
-    )
-    print(
-        f"  Detection: adaptive_const={detect_params.adaptive_thresh_constant}, "
-        f"min_perim={detect_params.min_marker_perimeter_rate}"
-    )
+        # Track best configuration
+        if avg_score > best_overall_score:
+            best_overall_score = avg_score
+            best_config = result
 
-    total_detected = 0
-    total_missed = 0
-    total_score = 0.0
-    all_position_errors = []
+    return best_results, best_config
 
-    # Test configuration on all images
-    for img_file in image_files:
-        # Load image
-        img = cv2.imread(str(img_file))
-        if img is None:
-            continue
 
-        # Preprocess
-        processed_img = preprocess_image(img, preproc_params)
+def print_best_parameters(best_config):
+    """Print the best parameters found during optimization."""
+    print("\n" + "=" * 80)
+    print("OPTIMIZATION COMPLETE - BEST PARAMETERS FOUND")
+    print("=" * 80)
 
-        # Detect markers
-        corners_list, ids, rejected = detect_markers(processed_img, detect_params)
+    if best_config:
+        print(f"\nBest Score: {best_config.score:.2f}")
+        print(f"Total Detected: {best_config.num_detected}")
+        print(f"Total Missed: {best_config.num_missed}")
+        if best_config.avg_position_error != float("inf"):
+            print(f"Average Position Error: {best_config.avg_position_error:.2f} mm")
+            print(f"Max Position Error: {best_config.max_position_error:.2f} mm")
 
-        # Process detected markers
-        detected_markers = process_detected_markers(corners_list, ids)
-
-        # Apply perspective transform
-        transform_success = apply_perspective_transform(detected_markers)
-
-        if transform_success:
-            # Calculate metrics
-            num_det, num_miss, avg_err, max_err, score = calculate_detection_score(
-                detected_markers, GROUND_TRUTH_POSITIONS
+        print("\n--- BEST PREPROCESSING PARAMETERS ---")
+        print(f"sharpen_alpha = {best_config.preprocessing_params.sharpen_alpha}")
+        print(f"sharpen_beta = {best_config.preprocessing_params.sharpen_beta}")
+        print(f"use_clahe = {best_config.preprocessing_params.use_clahe}")
+        if best_config.preprocessing_params.use_clahe:
+            print(
+                f"clahe_clip_limit = {best_config.preprocessing_params.clahe_clip_limit}"
+            )
+            print(
+                f"clahe_tile_size = {best_config.preprocessing_params.clahe_tile_size}"
             )
 
-            total_detected += num_det
-            total_missed += num_miss
-            total_score += score
-            if avg_err != float("inf"):
-                all_position_errors.append(avg_err)
+        print("\n--- BEST ARUCO DETECTION PARAMETERS ---")
+        print(
+            f"adaptive_thresh_constant = {best_config.detection_params.adaptive_thresh_constant}"
+        )
+        print(
+            f"min_marker_perimeter_rate = {best_config.detection_params.min_marker_perimeter_rate}"
+        )
+        print(
+            f"max_marker_perimeter_rate = {best_config.detection_params.max_marker_perimeter_rate}"
+        )
+        print(
+            f"polygonal_approx_accuracy_rate = {best_config.detection_params.polygonal_approx_accuracy_rate}"
+        )
+        print(
+            f"min_corner_distance_rate = {best_config.detection_params.min_corner_distance_rate}"
+        )
+        print(
+            f"min_distance_to_border = {best_config.detection_params.min_distance_to_border}"
+        )
 
-    # Calculate average metrics across all images
-    avg_score = total_score / len(image_files) if image_files else 0
-    avg_position_error = (
-        np.mean(all_position_errors) if all_position_errors else float("inf")
-    )
-
-    result = DetectionResult(
-        num_detected=total_detected,
-        num_missed=total_missed,
-        avg_position_error=avg_position_error,
-        max_position_error=(
-            np.max(all_position_errors) if all_position_errors else float("inf")
-        ),
-        score=avg_score,
-        preprocessing_params=preproc_params,
-        detection_params=detect_params,
-    )
-
-    best_results.append(result)
-
-    print(
-        f"  Results: detected={total_detected}, missed={total_missed}, "
-        f"avg_error={avg_position_error:.2f}mm, score={avg_score:.2f}"
-    )
-
-    # Track best configuration
-    if avg_score > best_overall_score:
-        best_overall_score = avg_score
-        best_config = result
-
-# ---------------------------------------------------------------------------
-# Print Best Results
-# ---------------------------------------------------------------------------
-
-print("\n" + "=" * 80)
-print("OPTIMIZATION COMPLETE - BEST PARAMETERS FOUND")
-print("=" * 80)
-
-if best_config:
-    print(f"\nBest Score: {best_config.score:.2f}")
-    print(f"Total Detected: {best_config.num_detected}")
-    print(f"Total Missed: {best_config.num_missed}")
-    if best_config.avg_position_error != float("inf"):
-        print(f"Average Position Error: {best_config.avg_position_error:.2f} mm")
-        print(f"Max Position Error: {best_config.max_position_error:.2f} mm")
-
-    print("\n--- BEST PREPROCESSING PARAMETERS ---")
-    print(f"sharpen_alpha = {best_config.preprocessing_params.sharpen_alpha}")
-    print(f"sharpen_beta = {best_config.preprocessing_params.sharpen_beta}")
-    print(f"use_clahe = {best_config.preprocessing_params.use_clahe}")
-    if best_config.preprocessing_params.use_clahe:
-        print(f"clahe_clip_limit = {best_config.preprocessing_params.clahe_clip_limit}")
-        print(f"clahe_tile_size = {best_config.preprocessing_params.clahe_tile_size}")
-
-    print("\n--- BEST ARUCO DETECTION PARAMETERS ---")
-    print(
-        f"adaptive_thresh_constant = {best_config.detection_params.adaptive_thresh_constant}"
-    )
-    print(
-        f"min_marker_perimeter_rate = {best_config.detection_params.min_marker_perimeter_rate}"
-    )
-    print(
-        f"max_marker_perimeter_rate = {best_config.detection_params.max_marker_perimeter_rate}"
-    )
-    print(
-        f"polygonal_approx_accuracy_rate = {best_config.detection_params.polygonal_approx_accuracy_rate}"
-    )
-    print(
-        f"min_corner_distance_rate = {best_config.detection_params.min_corner_distance_rate}"
-    )
-    print(
-        f"min_distance_to_border = {best_config.detection_params.min_distance_to_border}"
-    )
-
-    print("\n--- CODE TO USE IN MAIN PROGRAM ---")
-    print(
-        """
+        print("\n--- CODE TO USE IN MAIN PROGRAM ---")
+        print(
+            """
 # Preprocessing
 if len(img.shape) == 3:
     img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)"""
-    )
+        )
 
-    if best_config.preprocessing_params.use_clahe:
-        print(
-            f"""
+        if best_config.preprocessing_params.use_clahe:
+            print(
+                f"""
 clahe = cv2.createCLAHE(clipLimit={best_config.preprocessing_params.clahe_clip_limit}, 
                         tileGridSize=({best_config.preprocessing_params.clahe_tile_size}, 
                                      {best_config.preprocessing_params.clahe_tile_size}))
 img = clahe.apply(img)"""
-        )
+            )
 
-    print(
-        f"""
+        print(
+            f"""
 blur = cv2.GaussianBlur(img, (5, 5), 0)
 img = cv2.addWeighted(img, {best_config.preprocessing_params.sharpen_alpha}, 
                      blur, {best_config.preprocessing_params.sharpen_beta}, 0)
@@ -666,37 +598,37 @@ parameters.minCornerDistanceRate = {best_config.detection_params.min_corner_dist
 parameters.minDistanceToBorder = {best_config.detection_params.min_distance_to_border}
 aruco_detector = cv2.aruco.ArucoDetector(aruco_dict, parameters)
 """
-    )
+        )
 
-# Sort and print top 5 configurations
-print("\n" + "=" * 80)
-print("TOP 5 CONFIGURATIONS")
-print("=" * 80)
 
-best_results.sort(key=lambda x: x.score, reverse=True)
-for idx, result in enumerate(best_results[:5], 1):
-    print(f"\n#{idx} - Score: {result.score:.2f}")
-    print(f"  Detected: {result.num_detected}, Missed: {result.num_missed}")
-    if result.avg_position_error != float("inf"):
-        print(f"  Avg Error: {result.avg_position_error:.2f}mm")
-    print(
-        f"  Preproc: sharpen=({result.preprocessing_params.sharpen_alpha}, "
-        f"{result.preprocessing_params.sharpen_beta}), CLAHE={result.preprocessing_params.use_clahe}"
-    )
-    print(
-        f"  Detect: adaptive={result.detection_params.adaptive_thresh_constant}, "
-        f"min_perim={result.detection_params.min_marker_perimeter_rate}"
-    )
+def print_top_configurations(best_results, image_files):
+    """Print the top 5 parameter configurations."""
+    print("\n" + "=" * 80)
+    print("TOP 5 CONFIGURATIONS")
+    print("=" * 80)
 
-# ---------------------------------------------------------------------------
-# Optional: Process images with best parameters and save annotated output
-# ---------------------------------------------------------------------------
+    best_results.sort(key=lambda x: x.score, reverse=True)
+    for idx, result in enumerate(best_results[:5], 1):
+        # Calculate avg tags per photo for this result
+        avg_tags = result.num_detected / len(image_files) if image_files else 0
+        print(f"\n#{idx} - Score: {result.score:.2f}")
+        print(
+            f"  Detected: {result.num_detected}, Missed: {result.num_missed}, Avg tags/photo: {avg_tags:.1f}"
+        )
+        if result.avg_position_error != float("inf"):
+            print(f"  Avg Error: {result.avg_position_error:.2f}mm")
+        print(
+            f"  Preproc: sharpen=({result.preprocessing_params.sharpen_alpha}, "
+            f"{result.preprocessing_params.sharpen_beta}), CLAHE={result.preprocessing_params.use_clahe}"
+        )
+        print(
+            f"  Detect: adaptive={result.detection_params.adaptive_thresh_constant}, "
+            f"min_perim={result.detection_params.min_marker_perimeter_rate}"
+        )
 
-print("\n" + "=" * 80)
-print("PROCESSING IMAGES WITH BEST PARAMETERS")
-print("=" * 80)
 
-if best_config:
+def process_images_with_best_config(best_config, image_files, output_img_dir):
+    """Process all images with the best configuration and save debug outputs."""
     for img_file in image_files:
         print(f"\n{img_file.name}:")
 
@@ -709,42 +641,51 @@ if best_config:
         # Get base filename without extension for output files
         base_name = img_file.stem
 
-        # Preprocess with best parameters
-        processed_img = preprocess_image(img, best_config.preprocessing_params)
-        cv2.imwrite(
-            str(output_img_dir / f"{base_name}_best_preprocessed.jpg"), processed_img
+        # Use pipeline with best parameters to detect and process
+        aruco_detector = best_config.detection_params.create_detector()
+        fixed_markers = [A1, B1, C1, D1]
+        playground_corners = [
+            (A1.x, A1.y),
+            (B1.x, B1.y),
+            (D1.x, D1.y),
+            (C1.x, C1.y),
+        ]
+
+        detected_markers_tuples, processed_img, perspective_matrix, metadata = (
+            pipeline.process_image_for_aruco_detection(
+                img=img,
+                aruco_detector=aruco_detector,
+                camera_matrix=None,
+                dist_coeffs=None,
+                newcameramtx=None,
+                fixed_markers=fixed_markers,
+                playground_corners=playground_corners,
+                use_unround=False,
+                use_clahe=best_config.preprocessing_params.use_clahe,
+                use_thresholding=False,
+                sharpen_alpha=best_config.preprocessing_params.sharpen_alpha,
+                sharpen_beta=best_config.preprocessing_params.sharpen_beta,
+                sharpen_gamma=0.0,
+                use_mask_playground=False,
+                use_straighten_image=False,
+                save_debug_images=True,
+                debug_dir=output_img_dir,
+                base_name=base_name,
+                apply_contrast_boost=False,
+                contrast_alpha=1.1,
+            )
         )
 
-        # Detect markers with best parameters
-        corners_list, ids, rejected = detect_markers(
-            processed_img, best_config.detection_params
+        # Extract markers and corners
+        detected_markers = [marker for marker, corners in detected_markers_tuples]
+        corners_list = [corners for marker, corners in detected_markers_tuples]
+        ids = (
+            np.array([[marker.aruco_id] for marker in detected_markers])
+            if detected_markers
+            else None
         )
 
-        # Process detected markers
-        detected_markers = process_detected_markers(corners_list, ids)
-
-        # Apply perspective transform
-        transform_success = apply_perspective_transform(detected_markers)
-
-        # Annotate image
-        annotated_img = cv2.cvtColor(processed_img, cv2.COLOR_GRAY2BGR)
-        if ids is not None and len(ids) > 0:
-            cv2.aruco.drawDetectedMarkers(annotated_img, corners_list, ids)
-            for marker in detected_markers:
-                center = (int(marker.x), int(marker.y))
-                cv2.circle(annotated_img, center, 5, (0, 255, 0), -1)
-                cv2.putText(
-                    annotated_img,
-                    f"ID:{marker.aruco_id}",
-                    (center[0] + 10, center[1] - 10),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    0.5,
-                    (0, 255, 0),
-                    2,
-                )
-        cv2.imwrite(
-            str(output_img_dir / f"{base_name}_best_annotated.jpg"), annotated_img
-        )
+        transform_success = metadata["perspective_transform_computed"]
 
         # Calculate and print metrics
         if transform_success:
@@ -796,6 +737,35 @@ if best_config:
                 f"  Fixed markers detected: {len(fixed_detected)}/4: {sorted(fixed_detected)}"
             )
 
-print("\n" + "=" * 80)
-print("ALL PROCESSING COMPLETE")
-print("=" * 80)
+
+def main():
+    """Main function to run the parameter optimization."""
+    # Load image files
+    image_files = load_image_files(input_img_dir)
+
+    # Print marker configuration
+    print_marker_configuration()
+
+    # Generate test configurations
+    test_configs = generate_test_configurations()
+
+    # Run parameter search
+    best_results, best_config = run_parameter_search(test_configs, image_files)
+
+    # Print best parameters
+    print_best_parameters(best_config)
+
+    # Print top configurations
+    print_top_configurations(best_results, image_files)
+
+    # Optional: Process images with best parameters and save annotated output
+    if use_best_config:
+        process_images_with_best_config(best_config, image_files, output_img_dir)
+
+    print("\n" + "=" * 80)
+    print("ALL PROCESSING COMPLETE")
+    print("=" * 80)
+
+
+if __name__ == "__main__":
+    main()

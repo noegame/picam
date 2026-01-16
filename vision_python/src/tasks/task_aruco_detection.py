@@ -21,6 +21,7 @@ from pathlib import Path
 from vision_python.src.aruco import aruco
 from vision_python.src.img_processing import detect_aruco
 from vision_python.src.img_processing import unround_img
+from vision_python.src.img_processing import processing_pipeline as pipeline
 from vision_python.src.camera import camera_factory
 from vision_python.config import config
 
@@ -28,11 +29,12 @@ from vision_python.config import config
 # Constantes globales
 # ---------------------------------------------------------------------------
 
-A1 = aruco.Aruco(600, 600, 1, 20)
-B1 = aruco.Aruco(1400, 600, 1, 22)
-C1 = aruco.Aruco(600, 2400, 1, 21)
-D1 = aruco.Aruco(1400, 2400, 1, 23)
-FIXED_IDS = {20, 21, 22, 23}
+# Get fixed ArUco markers from config
+FIXED_MARKERS = config.get_fixed_aruco_markers()
+FIXED_IDS = {marker.aruco_id for marker in FIXED_MARKERS}
+
+# For backward compatibility
+A1, B1, C1, D1 = FIXED_MARKERS[0], FIXED_MARKERS[1], FIXED_MARKERS[2], FIXED_MARKERS[3]
 
 # ---------------------------------------------------------------------------
 # Fonctions
@@ -62,6 +64,15 @@ def run(image_queue=None) -> None:
             image_size = config.get_camera_resolution()
             camera_mode = config.get_camera_mode()
             calibration_file = config.get_camera_calibration_file()
+
+            # Get image processing parameters from config
+            img_params = config.get_image_processing_params()
+            use_unround = img_params["use_unround"]
+            use_clahe = img_params["use_clahe"]
+            use_thresholding = img_params["use_thresholding"]
+            sharpen_alpha = img_params["sharpen_alpha"]
+            sharpen_beta = img_params["sharpen_beta"]
+            sharpen_gamma = img_params["sharpen_gamma"]
 
             if camera_mode == config.CameraMode.EMULATED:
                 # Use existing folder from config, don't create today's folder
@@ -93,26 +104,15 @@ def run(image_queue=None) -> None:
             logger.error(f"Error while initializing the camera: {e}")
             raise
 
-        # Importation unround parameters
-        camera_matrix, dist_coeffs = unround_img.import_camera_calibration(
-            str(calibration_file)
+        # Load camera calibration matrices
+        camera_matrix, dist_coeffs, newcameramtx, roi = (
+            config.get_camera_calibration_matrices()
         )
         logger.info("Calibration parameters imported successfully")
-
-        # Process
-        newcameramtx, roi = unround_img.process_new_camera_matrix(
-            camera_matrix, dist_coeffs, image_size
-        )
-        logger.info("New optimized camera matrix calculated successfully")
 
         # Initialize ArUco detector
         aruco_detector = detect_aruco.init_aruco_detector()
         logger.info("ArUco detector initialized successfully")
-
-        # Destination points for perspective transform (fixed positions in real world)
-        dst_points = np.array(
-            [[A1.x, A1.y], [B1.x, B1.y], [D1.x, D1.y], [C1.x, C1.y]], dtype=np.float32
-        )
 
         end = False
         consecutive_errors = 0
@@ -161,78 +161,39 @@ def run(image_queue=None) -> None:
             # Convert RGB to BGR for OpenCV processing
             img_bgr = cv2.cvtColor(original_img, cv2.COLOR_RGB2BGR)
 
-            # Correct image roundness
-            img_unrounded = unround_img.unround(
-                img=img_bgr,
-                camera_matrix=camera_matrix,
-                dist_coeffs=dist_coeffs,
-                newcameramtx=newcameramtx,
+            # Use centralized processing pipeline for ArUco detection
+            detected_markers, final_img, perspective_matrix, metadata = (
+                pipeline.process_image_for_aruco_detection(
+                    img=img_bgr,
+                    aruco_detector=aruco_detector,
+                    camera_matrix=camera_matrix,
+                    dist_coeffs=dist_coeffs,
+                    newcameramtx=newcameramtx,
+                    fixed_markers=FIXED_MARKERS,
+                    playground_corners=None,  # No playground masking for real-time detection
+                    use_unround=use_unround,
+                    use_clahe=use_clahe,
+                    use_thresholding=use_thresholding,
+                    sharpen_alpha=sharpen_alpha,
+                    sharpen_beta=sharpen_beta,
+                    sharpen_gamma=sharpen_gamma,
+                    use_mask_playground=False,  # Disabled for real-time performance
+                    use_straighten_image=False,  # Disabled for real-time performance
+                    save_debug_images=False,  # No debug images in production
+                    apply_contrast_boost=False,
+                )
             )
-            logger.debug("Image roundness corrected successfully")
 
-            # Detect ArUco markers sources points
-            tags_from_img, rejected_markers = detect_aruco.detect_aruco_in_img(
-                img_unrounded, aruco_detector
-            )
+            # Extract detected tags from markers
+            tags_from_img = [marker for marker, _ in detected_markers]
 
-            # Find source points by their ArUco IDs
-            a2 = aruco.find_aruco_by_id(tags_from_img, 20)
-            b2 = aruco.find_aruco_by_id(tags_from_img, 22)
-            c2 = aruco.find_aruco_by_id(tags_from_img, 21)
-            d2 = aruco.find_aruco_by_id(tags_from_img, 23)
-
-            # Verify all reference markers were found
-            if a2 is None or b2 is None or c2 is None or d2 is None:
-                logger.info(f"Missing reference aruco markers in the image")
-
-                # Use previous valid matrix if available
-                # If no valid matrix yet, skip this frame
-                if "matrix" not in locals():
-                    logger.warning(
-                        "Perspective transformation matrix not yet available, skipping frame"
-                    )
-                    time.sleep(1)  # Avoid overload in case of repeated missing markers
-                    continue
-                else:
-                    logger.info("Using previous perspective transformation matrix")
-
+            # Log detection results
+            if not metadata["perspective_transform_computed"]:
+                logger.info("Missing reference aruco markers in the image")
+                logger.warning("Real world coordinates not calculated for this frame")
             else:
                 logger.info("All reference aruco markers found")
-                # Define source points (corners of the area to be straightened in image coordinates)
-                src_points = np.array(
-                    [[a2.x, a2.y], [b2.x, b2.y], [d2.x, d2.y], [c2.x, c2.y]],
-                    dtype=np.float32,
-                )
-
-                # Define destination points (where the corners should map to in real world coordinates)
-                dst_points = np.array(
-                    [[A1.x, A1.y], [B1.x, B1.y], [D1.x, D1.y], [C1.x, C1.y]],
-                    dtype=np.float32,
-                )
-
-                # Calculate the perspective transformation matrix
-                matrix = cv2.getPerspectiveTransform(src_points, dst_points)
-
-            # Convert detected tags image coordinates to real world coordinates
-            for tag in tags_from_img:
-                # Create homogeneous coordinate [x, y, z]
-                img_point = np.array([tag.x, tag.y, tag.z], dtype=np.float32).reshape(
-                    3, 1
-                )
-
-                # Apply perspective transformation matrix to convert to real world coordinates
-                real_world_point = matrix @ img_point
-
-                # Normalize homogeneous coordinates
-                real_x = real_world_point[0, 0] / real_world_point[2, 0]
-                real_y = real_world_point[1, 0] / real_world_point[2, 0]
-
-                # Set real world coordinates
-                tag.real_x = real_x
-                tag.real_y = real_y
-                tag.real_angle = (
-                    tag.angle
-                )  # Copy angle as-is (no transformation needed)
+                logger.info(f"Detected {len(tags_from_img)} ArUco markers")
 
             # sort aruco by id for easier reading
             tags_from_img.sort(key=lambda tag: tag.aruco_id)
@@ -244,7 +205,7 @@ def run(image_queue=None) -> None:
                 try:
                     # Encode image to JPEG bytes for efficient transfer through multiprocessing queue
                     ret, jpeg_buffer = cv2.imencode(
-                        ".jpg", img_unrounded, [cv2.IMWRITE_JPEG_QUALITY, 85]
+                        ".jpg", final_img, [cv2.IMWRITE_JPEG_QUALITY, 85]
                     )
                     if not ret:
                         logger.warning("Failed to encode image to JPEG")

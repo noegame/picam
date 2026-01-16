@@ -35,7 +35,7 @@ DISABLE = False
 
 use_unround = True  # Désarrondissement de l'image (correction de l'effet fish-eye)
 use_clahe = False  # Égalisation d'histogramme adaptative, False sauf éclairage variable
-use_binarization = False  # Binarisation de l'image pour améliorer le contraste
+use_thresholding = False  # Binarisation de l'image pour améliorer le contraste
 
 # Prétraitement optimal
 sharpen_alpha = 1.5  # Contraste
@@ -96,10 +96,22 @@ EMULATED_CAM_DIR = CAMERA_DIR / "2026-01-09-playground-ready"
 # ---------------------------------------------------------------------------
 
 # Define destination points (real world coordinates in mm)
-A1 = aruco.Aruco(600, 600, 1, 20)
-B1 = aruco.Aruco(1400, 600, 1, 22)
-C1 = aruco.Aruco(600, 2400, 1, 21)
-D1 = aruco.Aruco(1400, 2400, 1, 23)
+# Camera positioned outside terrain, middle of 3000mm side
+# Terrain: 3000mm (width/X) x 2000mm (depth/Y)
+FIXED_MARKER_20 = aruco.Aruco(600, 600, 1, 20)
+FIXED_MARKER_21 = aruco.Aruco(2400, 600, 1, 21)
+FIXED_MARKER_22 = aruco.Aruco(600, 1400, 1, 22)
+FIXED_MARKER_23 = aruco.Aruco(2400, 1400, 1, 23)
+FIXED_MARKERS = [FIXED_MARKER_20, FIXED_MARKER_21, FIXED_MARKER_22, FIXED_MARKER_23]
+
+# Playground corners in real world coordinates (mm)
+PLAYGROUND_CORNERS = [(0.0, 0.0), (0.0, 2000.0), (3000.0, 2000.0), (3000.0, 0.0)]
+
+# Deprecated aliases (for backward compatibility)
+A1 = FIXED_MARKER_20
+B1 = FIXED_MARKER_21
+C1 = FIXED_MARKER_22
+D1 = FIXED_MARKER_23
 
 # ---------------------------------------------------------------------------
 # Getter Functions
@@ -151,7 +163,7 @@ def get_image_processing_params():
     return {
         "use_unround": use_unround,
         "use_clahe": use_clahe,
-        "use_binarization": use_binarization,
+        "use_thresholding": use_thresholding,
         "sharpen_alpha": sharpen_alpha,
         "sharpen_beta": sharpen_beta,
         "sharpen_gamma": sharpen_gamma,
@@ -159,6 +171,14 @@ def get_image_processing_params():
         "min_marker_perimeter_rate": min_marker_perimeter_rate,
         "max_marker_perimeter_rate": max_marker_perimeter_rate,
         "polygonal_approx_accuracy_rate": polygonal_approx_accuracy_rate,
+    }
+
+
+def get_camera_params():
+    return {
+        "calibration_file": get_camera_calibration_file(),
+        "img_width": get_camera_width(),
+        "img_height": get_camera_height(),
     }
 
 
@@ -215,3 +235,30 @@ def get_camera_calibration_file():
 def get_emulated_cam_directory():
     """Returns the emulated images directory path."""
     return EMULATED_CAM_DIR
+
+
+def get_fixed_aruco_markers():
+    """Returns list of fixed ArUco markers in real world coordinates."""
+    return FIXED_MARKERS
+
+
+def get_playground_corners():
+    """Returns playground corners in real world coordinates (mm)."""
+    return PLAYGROUND_CORNERS
+
+
+def get_camera_calibration_matrices():
+    """Returns camera calibration matrices (camera_matrix, dist_coeffs, newcameramtx, roi)."""
+    from vision_python.src.img_processing import unround_img
+
+    calibration_file = get_camera_calibration_file()
+    img_size = get_camera_resolution()
+
+    camera_matrix, dist_coeffs = unround_img.import_camera_calibration(
+        str(calibration_file)
+    )
+    newcameramtx, roi = unround_img.process_new_camera_matrix(
+        camera_matrix, dist_coeffs, img_size
+    )
+
+    return camera_matrix, dist_coeffs, newcameramtx, roi

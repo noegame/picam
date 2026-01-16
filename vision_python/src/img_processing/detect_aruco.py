@@ -15,16 +15,60 @@ from vision_python.src.aruco.aruco import Aruco
 # ---------------------------------------------------------------------------
 
 
-def init_aruco_detector() -> cv2.aruco.ArucoDetector:
+def init_aruco_detector(
+    adaptive_thresh_constant=None,
+    min_marker_perimeter_rate=None,
+    max_marker_perimeter_rate=None,
+    polygonal_approx_accuracy_rate=None,
+    use_config_params=True,
+) -> cv2.aruco.ArucoDetector:
     """
-    Initialize and return an ArUco detector with default parameters.
-    version of opencv :  4.6.0+dfsg-12
-    Returns:
-        aruco_detector: An cv2.aruco.ArucoDetector object initialized with default parameters.
+    Initialize and return an ArUco detector with configurable parameters.
 
+    Args:
+        adaptive_thresh_constant: Adaptive threshold constant (None = use config)
+        min_marker_perimeter_rate: Min marker perimeter rate (None = use config)
+        max_marker_perimeter_rate: Max marker perimeter rate (None = use config)
+        polygonal_approx_accuracy_rate: Polygon approx accuracy rate (None = use config)
+        use_config_params: If True, load missing params from config
+
+    Returns:
+        aruco_detector: Configured cv2.aruco.ArucoDetector object
+
+    version of opencv: 4.6.0+dfsg-12
     """
+    from vision_python.config import config
+
     aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_50)
     parameters = cv2.aruco.DetectorParameters()
+
+    # Use subpixel corner refinement for better accuracy
+    parameters.cornerRefinementMethod = cv2.aruco.CORNER_REFINE_SUBPIX
+
+    # Load parameters from config if requested and not provided
+    if use_config_params:
+        img_params = config.get_image_processing_params()
+
+        if adaptive_thresh_constant is None:
+            adaptive_thresh_constant = img_params["adaptive_thresh_constant"]
+        if min_marker_perimeter_rate is None:
+            min_marker_perimeter_rate = img_params["min_marker_perimeter_rate"]
+        if max_marker_perimeter_rate is None:
+            max_marker_perimeter_rate = img_params["max_marker_perimeter_rate"]
+        if polygonal_approx_accuracy_rate is None:
+            polygonal_approx_accuracy_rate = img_params[
+                "polygonal_approx_accuracy_rate"
+            ]
+
+    # Apply parameters if provided
+    if adaptive_thresh_constant is not None:
+        parameters.adaptiveThreshConstant = adaptive_thresh_constant
+    if min_marker_perimeter_rate is not None:
+        parameters.minMarkerPerimeterRate = min_marker_perimeter_rate
+    if max_marker_perimeter_rate is not None:
+        parameters.maxMarkerPerimeterRate = max_marker_perimeter_rate
+    if polygonal_approx_accuracy_rate is not None:
+        parameters.polygonalApproxAccuracyRate = polygonal_approx_accuracy_rate
     # aruco_params.minMarkerPerimeterRate = 0.005
     # aruco_params.maxMarkerPerimeterRate = 13
     # aruco_params.cornerRefinementMethod = cv2.aruco.CORNER_REFINE_CONTOUR
