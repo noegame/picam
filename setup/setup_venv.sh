@@ -5,6 +5,9 @@
 
 set -e  # Arrêter le script en cas d'erreur
 
+# Se déplacer vers le répertoire racine du projet
+cd "$(dirname "$0")/.."
+
 echo "🔧 Configuration de l'environnement virtuel Python..."
 
 # Vérifier si Python3 est installé
