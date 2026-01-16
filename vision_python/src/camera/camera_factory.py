@@ -1,43 +1,32 @@
 #!/usr/bin/env python3
 """
-camera_factory.py
-Factory module to get camera instances
+Factory to get the appropriate Camera instance based on input string.
 """
-
-import logging
-from vision_python.config import config
-
-logger = logging.getLogger("camera_factory")
+from .camera import Camera
 
 
-def get_camera(w: int, h: int, camera: config.CameraMode, camera_param=None):
+def get_camera(camera: str) -> Camera:
     """
-    Retourne une instance de caméra.
-
-    :param w: img width.
-    :param h: img height.
-    :param camera: type of camera to use (raspberry, computer, emulated).
-    :param camera_param: paramètre spécifique à la caméra :
-        - For Raspberry Pi camera: mode de configuration (ex: "still", "video")
-        - For emulated camera: path to the image folder
-    :return: A camera instance (PiCamera or FakeCamera).
+    Factory function to return the appropriate Camera instance.
+    :param camera: Type of camera ("emulated", "webcam", "picamera")
+    :return: Instance of Camera subclass
     """
-    if camera == config.CameraMode.EMULATED:
+    if camera == "emulated":
         from .emulated_camera import EmulatedCamera
 
-        if camera_param is None:
-            raise ValueError(
-                "Le dossier d'images pour la fausse caméra doit être spécifié via camera_param."
-            )
-        return EmulatedCamera(w=w, h=h, image_folder=camera_param)
+        return EmulatedCamera()
+
+    elif camera == "webcam":
+        from .webcam import Webcam
+
+        return Webcam()
+
+    elif camera == "picamera":
+        from .picamera import PiCamera
+
+        return PiCamera()
+
     else:
-        from .camera import PiCamera
-
-        # Pour Raspberry Pi, camera_param peut être "still" ou autre mode
-        config_mode = camera_param if camera_param is not None else "still"
-
-        try:
-            return PiCamera(w=w, h=h, config_mode=config_mode)
-        except (ImportError, Exception) as e:
-            logger.error(f"Unable to initialize the real camera: {e}. ")
-            raise
+        raise ValueError(
+            f"Unknown camera type: {camera}. Expected 'emulated', 'webcam', or 'picamera'."
+        )

@@ -1,101 +1,77 @@
 #!/usr/bin/env python3
 """
-Classe pour la gestion de la caméra PiCamera2.
+Module de gestion des caméras.
+Définit la classe abstraite Camera et l'implémentation PiCamera.
 """
 
 # ---------------------------------------------------------------------------
 # Imports
 # ---------------------------------------------------------------------------
 
-from datetime import datetime
-from pathlib import Path
+from abc import ABC, abstractmethod
 import numpy as np
-import cv2
 import logging
+from typing import Dict, Any
+
 
 # ---------------------------------------------------------------------------
-# Classe
+# Classes
 # ---------------------------------------------------------------------------
 
 logger = logging.getLogger("camera")
 
 
-class PiCamera:
-    """Wrapper pour la caméra PiCamera2."""
+class Camera(ABC):
+    """
+    Classe abstraite définissant l'interface commune pour tous les types de caméras.
 
-    def __init__(self, w: int, h: int, config_mode: str = "preview"):
+    Cette classe sert de base pour toutes les implémentations de caméras
+    (PiCamera, Webcam, EmulatedCamera) et garantit une interface uniforme.
+    """
+
+    @abstractmethod
+    def init(self) -> None:
         """
-        Initialise la caméra PiCamera2.
+        Initialise le matériel de la caméra.
 
-        :param w: Largeur de l'image
-        :param h: Hauteur de l'image
-        :param config_mode: Mode de configuration - "preview" (streaming continu) ou "still" (captures uniques)
+        Cette méthode doit configurer et préparer la caméra pour la capture.
+        Lève une exception en cas d'échec d'initialisation.
         """
-        try:
-            from picamera2 import Picamera2
-        except ImportError as ie:
-            error_msg = (
-                "Impossible d'importer picamera2. "
-                "Assurez-vous que libcamera est installé et disponible sur le système. "
-                "Si vous n'êtes pas sur un Raspberry Pi, utilisez fake_camera=True."
-            )
-            logger.error(error_msg)
-            raise ImportError(error_msg) from ie
+        pass
 
-        try:
-            logger.info("Initialisation de la caméra...")
-            self.camera = Picamera2()
-            self.config_mode = config_mode
+    @abstractmethod
+    def start(self) -> None:
+        """
+        Démarre le flux vidéo de la caméra.
 
-            if config_mode == "still":
-                logger.info(f"Mode: STILL (captures uniques optimisées)")
-                camera_config = self.camera.create_still_configuration(
-                    main={"size": (w, h)}
-                )
-            else:  # "preview" by default
-                logger.info(f"Mode: PREVIEW (streaming continu)")
-                camera_config = self.camera.create_preview_configuration(
-                    main={"format": "XRGB8888", "size": (w, h)}
-                )
+        Active la caméra et commence l'acquisition d'images.
+        """
+        pass
 
-            self.camera.configure(camera_config)
-            self.camera.start()
-            logger.info("Caméra initialisée avec succès.")
-        except Exception as e:
-            logger.error(f"Erreur lors de l'initialisation de la caméra: {e}")
-            raise Exception(f"Erreur lors de l'initialisation de la caméra: {e}")
+    @abstractmethod
+    def stop(self) -> None:
+        """
+        Arrête le flux vidéo et libère les ressources.
 
-    def capture_array(self) -> np.ndarray:
-        """Capture une image et la retourne en tant que np.ndarray (format RGB)."""
-        try:
-            return self.camera.capture_array()
-        except Exception as e:
-            logger.error(f"Erreur lors de la capture du tableau: {e}")
-            raise Exception(f"Erreur lors de la capture du tableau: {e}")
+        Ferme proprement la caméra et nettoie les ressources allouées.
+        """
+        pass
 
-    def capture_image(self, pictures_dir: Path) -> tuple[np.ndarray, Path]:
-        """Capture une image, la sauvegarde et la retourne en tant que np.ndarray"""
-        try:
-            pictures_dir.mkdir(parents=True, exist_ok=True)
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
-            filename = f"{timestamp}.jpg"
-            filepath = pictures_dir / filename
-            image_array = self.capture_array()
-            self.camera.capture_file(str(filepath))
-            logger.info(f"Image capturée: {filepath.name}")
-            return cv2.cvtColor(image_array, cv2.COLOR_BGR2RGB), filepath
-        except Exception as e:
-            logger.error(f"Erreur lors de la capture: {e}")
-            raise Exception(f"Erreur lors de la capture: {e}")
+    @abstractmethod
+    def set_parameters(self, parameters: Dict[str, Any]) -> None:
+        """
+        Configure les paramètres de la caméra.
 
-    def close(self):
-        """Ferme et nettoie la caméra proprement."""
-        try:
-            if hasattr(self, "camera") and self.camera is not None:
-                self.camera.stop()
-                self.camera.close()
-                logger.info("Caméra fermée correctement.")
-            else:
-                logger.warning("Caméra n'était pas initialisée, rien à fermer.")
-        except Exception as e:
-            logger.warning(f"Erreur lors de la fermeture de la caméra: {e}")
+        :param parameters: Dictionnaire contenant les paramètres à configurer
+                          (ex: exposition, contraste, balance des blancs, etc.)
+        """
+        pass
+
+    @abstractmethod
+    def capture_photo(self) -> np.ndarray:
+        """
+        Capture une photo et la retourne.
+
+        :return: Image capturée sous forme de tableau numpy (format RGB)
+        """
+        pass

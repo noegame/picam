@@ -94,12 +94,20 @@ def run(image_queue=None) -> None:
 
         # Initialize camera
         try:
-            camera = camera_factory.get_camera(
-                camera=camera_mode,
-                w=img_width,
-                h=img_height,
-                camera_param=daily_pictures_dir,
+            camera = camera_factory.get_camera(camera=camera_mode)
+            camera.set_parameters(
+                {
+                    "width": img_width,
+                    "height": img_height,
+                    "image_folder": (
+                        daily_pictures_dir
+                        if camera_mode == config.CameraMode.EMULATED
+                        else None
+                    ),
+                }
             )
+            camera.init()
+            camera.start()
         except Exception as e:
             logger.error(f"Error while initializing the camera: {e}")
             raise
@@ -142,12 +150,20 @@ def run(image_queue=None) -> None:
                         logger.warning(f"Error closing camera: {close_err}")
 
                     try:
-                        camera = camera_factory.get_camera(
-                            camera=camera_mode,
-                            w=img_width,
-                            h=img_height,
-                            camera_param=pictures_dir,
+                        camera = camera_factory.get_camera(camera=camera_mode)
+                        camera.set_parameters(
+                            {
+                                "width": img_width,
+                                "height": img_height,
+                                "image_folder": (
+                                    daily_pictures_dir
+                                    if camera_mode == config.CameraMode.EMULATED
+                                    else None
+                                ),
+                            }
                         )
+                        camera.init()
+                        camera.start()
                         consecutive_errors = 0
                         logger.info("Camera restarted successfully")
                     except Exception as restart_err:

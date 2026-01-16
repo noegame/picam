@@ -42,7 +42,6 @@ def main():
             w=image_width,
             h=image_height,
             camera=camera,
-            camera_param="still",
         )
         logger.info("✓ Caméra initialisée en mode STILL (haute qualité)")
 
