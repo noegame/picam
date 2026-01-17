@@ -10,7 +10,8 @@ Ce module fournit une hiérarchie de classes pour la gestion de différents type
 Utilisez camera_factory.get_camera() pour créer facilement des instances.
 """
 
-from .camera import Camera, PiCamera
+from .camera import Camera
+from .picamera import PiCamera
 from .webcam import Webcam
 from .emulated_camera import EmulatedCamera
 from .camera_factory import get_camera
