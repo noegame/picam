@@ -114,7 +114,7 @@ class EmulatedCamera(Camera):
         if unknown_params:
             logger.warning(f"Paramètres non reconnus ignorés: {unknown_params}")
 
-    def capture_photo(self) -> np.ndarray:
+    def take_picture(self) -> np.ndarray:
         """
         Capture une photo et la retourne.
 

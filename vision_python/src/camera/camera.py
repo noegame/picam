@@ -68,7 +68,7 @@ class Camera(ABC):
         pass
 
     @abstractmethod
-    def capture_photo(self) -> np.ndarray:
+    def take_picture(self) -> np.ndarray:
         """
         Capture une photo et la retourne.
 
