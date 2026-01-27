@@ -34,6 +34,200 @@ def find_closest_expected_position(tag_id, detected_pos):
     return (*closest_pos, min_distance) if closest_pos else None
 
 
+def detect_markers(detector, image, mask=None, scale=1.5, sharpen=True):
+    """
+    Find the markers in the input image and return their corners coordinates and IDs.
+    
+    Args:
+        detector: ArUco detector instance
+        image: Input image (BGR)
+        mask: Optional mask to restrict detection area
+        scale: Scale factor for image resizing (default 1.5)
+        sharpen: Whether to apply sharpening filter (default True)
+    
+    Returns:
+        tuple: (corners, ids, rejected, timings)
+            - corners: List of corner arrays (Nx4x2)
+            - ids: Array of marker IDs (Nx1)
+            - rejected: List of rejected marker candidates
+            - timings: Dictionary with timing information
+    """
+    timings = {}
+    
+    # Apply mask if provided
+    if mask is not None:
+        t0 = t.time()
+        image = cv2.bitwise_and(image, image, mask=mask)
+        timings["mask_application"] = t.time() - t0
+    
+    # Preprocessing: Sharpness enhancement
+    if sharpen:
+        t0 = t.time()
+        kernel_sharpening = np.array([[-1, -1, -1], [-1, 9, -1], [-1, -1, -1]])
+        image = cv2.filter2D(image, -1, kernel_sharpening)
+        timings["sharpening"] = t.time() - t0
+    
+    # Resize if scale != 1.0
+    if scale != 1.0:
+        t0 = t.time()
+        width = int(image.shape[1] * scale)
+        height = int(image.shape[0] * scale)
+        image = cv2.resize(image, (width, height))
+        timings["resizing"] = t.time() - t0
+    
+    # Detection
+    t0 = t.time()
+    corners, ids, rejected = detector.detectMarkers(image)
+    timings["detection"] = t.time() - t0
+    
+    # Rescale corners back to original coordinates
+    if scale != 1.0 and corners:
+        corners = [corner / scale for corner in corners]
+    
+    return corners, ids, rejected, timings
+
+
+def find_center_coord(corners):
+    """
+    Find the center coordinates of each detected marker from their corners coordinates.
+    
+    Args:
+        corners: Single marker corners array (4x2) or list of corners arrays
+    
+    Returns:
+        tuple: (center_x, center_y) for single marker or list of tuples for multiple markers
+    """
+    if isinstance(corners, list):
+        # Multiple markers
+        centers = []
+        for corner in corners:
+            corner_array = corner[0] if len(corner.shape) == 3 else corner
+            center_x = np.mean(corner_array[:, 0])
+            center_y = np.mean(corner_array[:, 1])
+            centers.append((center_x, center_y))
+        return centers
+    else:
+        # Single marker
+        corner_array = corners[0] if len(corners.shape) == 3 else corners
+        center_x = np.mean(corner_array[:, 0])
+        center_y = np.mean(corner_array[:, 1])
+        return (center_x, center_y)
+
+
+def convert_coord(points, homography_inv, K, D, z_values=None):
+    """
+    Convert the coordinates from the image coordinate system to the terrain coordinate system.
+    
+    Args:
+        points: Array of points in image coordinates (Nx2) or list of tuples
+        homography_inv: Inverse homography matrix (image -> real world)
+        K: Camera intrinsic matrix
+        D: Fisheye distortion coefficients
+        z_values: Optional Z coordinates for each point (default: 30mm for all)
+    
+    Returns:
+        list: List of (x, y, z) tuples in real-world coordinates (mm)
+    """
+    if not isinstance(points, np.ndarray):
+        points = np.array(points, dtype=np.float32)
+    
+    if z_values is None:
+        z_values = [30] * len(points)  # Default 30mm height
+    
+    real_coords = []
+    for i, point in enumerate(points):
+        # Reshape for undistortion
+        point_distorted = np.array([[[point[0], point[1]]]], dtype=np.float32)
+        
+        # Undistort point before transforming it
+        point_undistorted = cv2.fisheye.undistortPoints(point_distorted, K, D, None, K)
+        
+        # Apply homography transformation
+        point_real = cv2.perspectiveTransform(point_undistorted, homography_inv)
+        
+        # Extract coordinates and add Z
+        x = point_real[0][0][0]
+        y = point_real[0][0][1]
+        z = z_values[i]
+        
+        real_coords.append((x, y, z))
+    
+    return real_coords
+
+
+def print_detection_stats(ids, centers, real_coords=None, expected_positions=None):
+    """
+    Print statistics about the detected markers.
+    
+    Args:
+        ids: Array of marker IDs (Nx1)
+        centers: List of center coordinates (tuples)
+        real_coords: Optional list of real-world coordinates
+        expected_positions: Optional dictionary of expected positions by ID
+    """
+    if ids is None or len(ids) == 0:
+        print("No valid tags detected")
+        return
+    
+    # Prepare data for sorted display
+    detections = []
+    for i, marker_id in enumerate(ids):
+        mid = marker_id[0] if isinstance(marker_id, np.ndarray) else marker_id
+        detection = {
+            "id": mid,
+            "center": centers[i],
+            "real_coords": real_coords[i] if real_coords else None,
+            "expected_pos": None,
+            "error_x": None,
+            "error_y": None,
+        }
+        
+        # Calculate errors if expected positions provided
+        if real_coords and expected_positions and mid in expected_positions:
+            closest = find_closest_expected_position(mid, (real_coords[i][0], real_coords[i][1]))
+            if closest:
+                z_exp = real_coords[i][2]  # Use same Z as detected
+                detection["expected_pos"] = (closest[0], closest[1], z_exp)
+                detection["error_x"] = real_coords[i][0] - closest[0]
+                detection["error_y"] = real_coords[i][1] - closest[1]
+        
+        detections.append(detection)
+    
+    # Print header
+    if real_coords is not None:
+        print(f"\n{'#':<6}{'ID':<6}{'Image Position':<20}{'Detected (mm)':<25}{'Expected (mm)':<25}{'Error (mm)':<20}")
+        print("-" * 102)
+    else:
+        print(f"\n{'#':<6}{'ID':<10}{'Center Position':<25}")
+        print("-" * 41)
+    
+    # Sort by ID then by position
+    detections.sort(key=lambda x: (x["id"], x["center"][0], x["center"][1]))
+    
+    # Print each detection
+    for idx, detection in enumerate(detections, 1):
+        marker_id = detection["id"]
+        center_x = int(detection["center"][0])
+        center_y = int(detection["center"][1])
+        
+        if real_coords is not None and detection["real_coords"] is not None:
+            real_x = int(detection["real_coords"][0])
+            real_y = int(detection["real_coords"][1])
+            real_z = int(detection["real_coords"][2])
+            
+            if detection["expected_pos"] is not None:
+                exp_x = int(detection["expected_pos"][0])
+                exp_y = int(detection["expected_pos"][1])
+                exp_z = int(detection["expected_pos"][2])
+                err_x = int(detection["error_x"])
+                err_y = int(detection["error_y"])
+                print(f"{idx:<6}{marker_id:<6}({center_x},{center_y}){'':>6}({real_x},{real_y},{real_z}){'':>6}({exp_x},{exp_y},{exp_z}){'':>6}(Δx:{err_x:+4}, Δy:{err_y:+4})")
+            else:
+                print(f"{idx:<6}{marker_id:<6}({center_x},{center_y}){'':>6}({real_x},{real_y},{real_z}){'':>6}(N/A){'':>12}(N/A)")
+        else:
+            print(f"{idx:<6}{marker_id:<10}({center_x}, {center_y})")
+
+
 def detect_aruco_tags(
     image_path,
     detector,
@@ -43,7 +237,7 @@ def detect_aruco_tags(
     homography_inv=None,
 ):
     """
-    Optimized detection with unique configuration: 1.25 scale × Sharpened × Aggressive small tags
+    Orchestrates the complete ArUco detection and localization pipeline.
     Filters only allowed IDs: 20, 21, 22, 23, 41, 36, 47
     Returns list of detected tags with their real coordinates if homography_inv is provided
     """
@@ -68,150 +262,99 @@ def detect_aruco_tags(
         image = cv2.cvtColor(image, cv2.COLOR_BGRA2BGR)
     timings["color_conversion"] = t.time() - t0
 
-    # mask
-    if mask is not None:
-        t0 = t.time()
-        # Resize mask to the size of the resized image
-        image = cv2.bitwise_and(image, image, mask=mask)
-        timings["mask_application"] = t.time() - t0
+    # ========== STEP 1: DETECT MARKERS ==========
+    corners, ids, rejected, detection_timings = detect_markers(
+        detector, image, mask=mask, scale=1.5, sharpen=True
+    )
+    timings.update(detection_timings)
 
-    # List to store all detected markers
+    # ========== STEP 2: FILTER ALLOWED IDS ==========
     all_detections = []
-
-    # Preprocessing: Sharpness enhancement
-    t0 = t.time()
-    kernel_sharpening = np.array([[-1, -1, -1], [-1, 9, -1], [-1, -1, -1]])
-    sharpened = cv2.filter2D(image, -1, kernel_sharpening)
-    timings["sharpening"] = t.time() - t0
-
-    # Resize to 1.5 scale
-    t0 = t.time()
-    scale = 1.5
-    width = int(sharpened.shape[1] * scale)
-    height = int(sharpened.shape[0] * scale)
-    img_scaled = cv2.resize(sharpened, (width, height))
-    timings["resizing"] = t.time() - t0
-
-    # Detection
-    t0 = t.time()
-    corners, ids, rejected = detector.detectMarkers(img_scaled)
-    timings["detection"] = t.time() - t0
-
-    # Filter unauthorized IDs and calculate real coordinates
-    t0 = t.time()
+    valid_ids = []
+    valid_corners = []
+    
     if ids is not None:
         for i, marker_id in enumerate(ids):
             mid = marker_id[0]
-
+            
             # FILTERING: Ignore unauthorized IDs
             if mid not in ALLOWED_IDS:
                 rejected_count += 1
                 continue
-
-            corner = corners[i][0].copy()
-
-            # Rescale corners
-            corner = corner / scale
-
-            # Calculate center
-            center_x = np.mean(corner[:, 0])
-            center_y = np.mean(corner[:, 1])
-
-            # Calculate real coordinates if homography provided
-            real_coords = None
-            expected_pos = None
-            error_x = None
-            error_y = None
-            error_distance = None
-
-            if homography_inv is not None:
-                # Find expected Z for this tag
-                z_expected = 30  # Default 30mm (common height of tags)
-                if mid in EXPECTED_POSITIONS:
-                    # Retrieve Z from initial data
-                    for entry in aruco_initial_positions.initial_position:
-                        if mid in entry[0]:
-                            z_expected = entry[4]  # Index 4 = Z
-                            break
-
-                # Undistort point before transforming it
-                point_distorted = np.array([[[center_x, center_y]]], dtype=np.float32)
-                point_undistorted = cv2.fisheye.undistortPoints(
-                    point_distorted, K, D, None, K
-                )
-                point_real = cv2.perspectiveTransform(point_undistorted, homography_inv)
-                real_coords = (point_real[0][0][0], point_real[0][0][1], z_expected)
-
-                # Find closest expected position (compares only X,Y)
-                closest = find_closest_expected_position(
-                    mid, (real_coords[0], real_coords[1])
-                )
-                if closest:
-                    expected_pos = (closest[0], closest[1], z_expected)
-                    error_x = real_coords[0] - expected_pos[0]
-                    error_y = real_coords[1] - expected_pos[1]
-                    error_distance = closest[2]
-
-            all_detections.append(
-                {
-                    "id": mid,
-                    "corners": corner,
-                    "center": (center_x, center_y),
-                    "real_coords": real_coords,
-                    "expected_pos": expected_pos,
-                    "error_x": error_x,
-                    "error_y": error_y,
-                    "error_distance": error_distance,
-                }
-            )
+            
+            valid_ids.append(mid)
+            valid_corners.append(corners[i][0])
+    
+    # ========== STEP 3: CALCULATE CENTERS ==========
+    centers = []
+    if valid_corners:
+        centers = find_center_coord(valid_corners)
+    
+    # ========== STEP 4: CONVERT COORDINATES (if homography provided) ==========
+    t0 = t.time()
+    real_coords = None
+    if homography_inv is not None and centers:
+        # Determine Z values for each tag
+        z_values = []
+        for mid in valid_ids:
+            z_expected = 30  # Default 30mm (common height of tags)
+            if mid in EXPECTED_POSITIONS:
+                # Retrieve Z from initial data
+                for entry in aruco_initial_positions.initial_position:
+                    if mid in entry[0]:
+                        z_expected = entry[4]  # Index 4 = Z
+                        break
+            z_values.append(z_expected)
+        
+        # Convert image coordinates to real-world coordinates
+        real_coords = convert_coord(centers, homography_inv, K, D, z_values)
     timings["localization"] = t.time() - t0
-
+    
+    # ========== STEP 5: BUILD DETECTION RESULTS ==========
+    for i, mid in enumerate(valid_ids):
+        detection = {
+            "id": mid,
+            "corners": valid_corners[i],
+            "center": centers[i],
+            "real_coords": real_coords[i] if real_coords else None,
+            "expected_pos": None,
+            "error_x": None,
+            "error_y": None,
+            "error_distance": None,
+        }
+        
+        # Calculate errors if real coordinates available
+        if real_coords:
+            closest = find_closest_expected_position(
+                mid, (real_coords[i][0], real_coords[i][1])
+            )
+            if closest:
+                z_exp = real_coords[i][2]
+                detection["expected_pos"] = (closest[0], closest[1], z_exp)
+                detection["error_x"] = real_coords[i][0] - closest[0]
+                detection["error_y"] = real_coords[i][1] - closest[1]
+                detection["error_distance"] = closest[2]
+        
+        all_detections.append(detection)
+    
     # Calculate total time before display
     timings["total_detection"] = t.time() - t_start
 
+    # ========== STEP 6: PRINT DETECTION STATISTICS ==========
     if verbose:
         print(f"\nUnauthorized IDs rejected: \t{rejected_count}")
         print(f"Valid tags detected: \t\t{len(all_detections)}")
         print(f"Detection duration: \t\t{timings['total_detection']:.2f} seconds")
-
-    # Display results
-    if verbose and len(all_detections) > 0:
-        if homography_inv is not None:
-            print(
-                f"\n{'#':<6}{'ID':<6}{'Image Position':<20}{'Detected (mm)':<25}{'Expected (mm)':<25}{'Error (mm)':<20}"
-            )
-            print("-" * 102)
+        
+        if len(all_detections) > 0:
+            # Prepare data for print_detection_stats
+            stats_ids = np.array([[d["id"]] for d in all_detections])
+            stats_centers = [d["center"] for d in all_detections]
+            stats_real_coords = [d["real_coords"] for d in all_detections] if real_coords else None
+            
+            print_detection_stats(stats_ids, stats_centers, stats_real_coords, EXPECTED_POSITIONS)
         else:
-            print(f"\n{'#':<6}{'ID':<10}{'Center Position':<25}")
-            print("-" * 41)
-        # Sort by ID then by position
-        all_detections.sort(key=lambda x: (x["id"], x["center"][0], x["center"][1]))
-        for idx, detection in enumerate(all_detections, 1):
-            marker_id = detection["id"]
-            center_x = int(detection["center"][0])
-            center_y = int(detection["center"][1])
-            if homography_inv is not None and detection["real_coords"] is not None:
-                real_x = int(detection["real_coords"][0])
-                real_y = int(detection["real_coords"][1])
-                real_z = int(detection["real_coords"][2])
-
-                if detection["expected_pos"] is not None:
-                    exp_x = int(detection["expected_pos"][0])
-                    exp_y = int(detection["expected_pos"][1])
-                    exp_z = int(detection["expected_pos"][2])
-                    err_x = int(detection["error_x"])
-                    err_y = int(detection["error_y"])
-                    print(
-                        f"{idx:<6}{marker_id:<6}({center_x},{center_y}){'':>6}({real_x},{real_y},{real_z}){'':>6}({exp_x},{exp_y},{exp_z}){'':>6}(Δx:{err_x:+4}, Δy:{err_y:+4})"
-                    )
-                else:
-                    print(
-                        f"{idx:<6}{marker_id:<6}({center_x},{center_y}){'':>6}({real_x},{real_y},{real_z}){'':>6}(N/A){'':>12}(N/A)"
-                    )
-            else:
-                print(f"{idx:<6}{marker_id:<10}({center_x}, {center_y})")
-    elif verbose:
-        print("No valid tags detected")
+            print("No valid tags detected")
 
     # Create output image
     t0 = t.time()
@@ -389,9 +532,11 @@ def process_folder(input_folder, output_folder="output"):
     print("=" * 80)
 
     # Global statistics
-    total_rejected = 0
-    total_valid = 0
-    total_time = 0
+    global_stats = {
+        "total_rejected": 0,
+        "total_valid": 0,
+        "total_time": 0
+    }
 
     # Time statistics per step
     cumulative_timings = {}
@@ -434,9 +579,9 @@ def process_folder(input_folder, output_folder="output"):
         print_img_stats(stats)
 
         # Accumulate statistics (use REAL measured time)
-        total_rejected += stats["rejected_count"]
-        total_valid += stats["valid_count"]
-        total_time += real_image_time  # CORRECTION: use real measured time
+        global_stats["total_rejected"] += stats["rejected_count"]
+        global_stats["total_valid"] += stats["valid_count"]
+        global_stats["total_time"] += real_image_time  # CORRECTION: use real measured time
 
         # Accumulate time per step
         for key, value in stats["timings"].items():
@@ -454,11 +599,11 @@ def process_folder(input_folder, output_folder="output"):
     print("GLOBAL STATISTICS")
     print("=" * 80)
     print(f"Total number of images processed: \t{total_images}")
-    print(f"\nAverage unauthorized IDs rejected: \t{total_rejected / total_images:.2f}")
-    print(f"Average valid tags detected: \t\t{total_valid / total_images:.2f}")
-    print(f"\nTotal processing time: \t\t{total_time:.2f} seconds")
+    print(f"\nAverage unauthorized IDs rejected: \t{global_stats['total_rejected'] / total_images:.2f}")
+    print(f"Average valid tags detected: \t\t{global_stats['total_valid'] / total_images:.2f}")
+    print(f"\nTotal processing time: \t\t{global_stats['total_time']:.2f} seconds")
     print(f"Total script execution time: \t\t{t.time() - t_init:.2f} seconds")
-    print(f"Average time per image: \t\t{total_time / total_images:.3f} seconds")
+    print(f"Average time per image: \t\t{global_stats['total_time'] / total_images:.3f} seconds")
 
     print("\n" + "-" * 80)
     print("TIME ANALYSIS PER STEP (averages)")
@@ -475,7 +620,7 @@ def process_folder(input_folder, output_folder="output"):
         "saving",
     ]:
         avg_time = cumulative_timings.get(key, 0) / total_images
-        percentage = (cumulative_timings.get(key, 0) / total_time) * 100
+        percentage = (cumulative_timings.get(key, 0) / global_stats['total_time']) * 100
         print(f"{key.capitalize():<25} {avg_time:.3f}s\t({percentage:.1f}%)")
 
     # Display localization error statistics

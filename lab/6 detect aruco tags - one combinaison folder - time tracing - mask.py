@@ -430,9 +430,17 @@ def find_mask(
     return mask
 
 
-# Utilisation
-if __name__ == "__main__":
-    input_folder = "2026-01-16-playground-ready"
-    output_folder = "output6"
+def get_output_folder():
+    script_name = os.path.splitext(os.path.basename(__file__))[0]
+    output_folder = os.path.join("../pictures/debug", script_name)
+    os.makedirs(output_folder, exist_ok=True)
+    return output_folder
 
+
+def main():
+    input_folder = "../pictures/2026-01-16-playground-ready"
+    output_folder = get_output_folder()
     process_folder(input_folder, output_folder)
+
+if __name__ == "__main__":
+    main()
