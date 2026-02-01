@@ -8,7 +8,6 @@
 
 
 ### Arcuo ID meaning
-- 20, 21, 22, 23 : fixed aruco markers on the playground floor
 - 36 : blue box
 - 41 : empty box
 - 47 : yellow box

@@ -45,8 +45,9 @@ initial_position = [
 
 def get_expected_position():
     """
-    Créer un dictionnaire des positions attendues
-    Clé: (id, x, y) où x,y sont les positions réelles attendues
+    Convert the initial_position list into a dictionary mapping tag IDs to their expected positions.
+    Returns:
+        dict: A dictionary where keys are tag IDs and values are lists of (x, y, z) tuples representing expected positions.
     """
     expected_positions = {}
     for entry in initial_position:
@@ -56,6 +57,6 @@ def get_expected_position():
             if tag_id not in expected_positions:
                 expected_positions[tag_id] = []
             # Stocker uniquement X,Y pour la recherche de proximité (Z ajouté dynamiquement)
-            expected_positions[tag_id].append((x, y))
+            expected_positions[tag_id].append((x, y, z))
 
     return expected_positions

@@ -1,3 +1,7 @@
+"""
+3D localisation using ArUco tags with OpenCV solvePnP.
+"""
+
 import cv2
 import numpy as np
 import time as t
@@ -258,7 +262,9 @@ tag_object_points = np.array(
 # =============================
 # IMAGE
 # =============================
-image = cv2.imread("image1.jpg")
+image = cv2.imread(
+    "pictures/2026-01-16-playground-ready/20260116_173858_506_4056x3040.png"
+)
 if image is None:
     raise RuntimeError("Impossible de charger l'image image1.jpg")
 

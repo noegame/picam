@@ -32,7 +32,7 @@ convert the coordinates of the image coordinate system to the terrain coordinate
 @startuml
 left to right direction
 rectangle {
-    [corners (matrice Nx4)] --> [convert_coord]
+    [corners (matrice Nx4)] --> [pose_estimation]
     [convert_coord] --> [new_corners (matrice Nx4)]
 }
 @enduml

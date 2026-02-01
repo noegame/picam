@@ -655,7 +655,7 @@ def get_output_folder():
 
 
 def main():
-    input_folder = "../pictures/2026-01-16-playground-ready"
+    input_folder = "pictures/2026-01-16-playground-ready"
     output_folder = get_output_folder()
     process_folder(input_folder, output_folder)
 
