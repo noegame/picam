@@ -1,20 +1,32 @@
-## Spécifications pour extension l'ajout d'un onglet caméra à l'extension VSC robot eseo
+# Specifications for improvement of supervision extension
 
-L'onglet propose 2 affichages : "caméra" ou terrain". 
-Les affichages peuvent être caché, affiché indépendamment ou simultanément.
-L'extension affiche le statut de la caméra : "connecté" ou "déconnecté"
-L'extension affiche le mot de transmission : "image" et/ou "coordonnées"
+This involves adding a camera tab to the VSC "robot eseo" extension toolbox.
+The implementation of this new feature should reuse as much as possible the existing code of the supervision extension.
 
-### Affichage caméra
+## General
 
-L'extension affiche ce que voit la caméra
+The tab offers 2 displays: "camera" or "field". 
+The displays can be hidden, shown independently, or simultaneously.
 
-### Affichage terrain
+The tab displays the camera status: "connected" or "disconnected"
+The tab displays the transmission mode: "image" and/or "coordinates"
+The tab displays the latency (only possible if the message contains the sending time)
 
-L'extension reçoit les positions éléments de jeux. 
-L'extension affiche les éléments de jeux sur le terrain.
+The tab displays a "restart" button
+The tab displays a "reconnect" button
 
-## Remarque
 
-- élément de jeu caisse : 150 mm x 50 mm
+### Camera Display
+
+The tab displays what the camera sees.
+The tab displays the number of frames per second.
+
+### Field Display
+
+The tab receives the positions of game elements. 
+The tab displays the game elements on the field.
+
+## Note
+
+- box game element: 150 mm x 50 mm
 
