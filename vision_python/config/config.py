@@ -26,35 +26,12 @@ class CameraMode(Enum):
     EMULATED = 3
 
 
-ENABLE = True
-DISABLE = False
-
-# ---------------------------------------------------------------------------
-# Image Processing and ArUco Detection Parameters
-# ---------------------------------------------------------------------------
-
-use_unround = True  # Désarrondissement de l'image (correction de l'effet fish-eye)
-use_clahe = False  # Égalisation d'histogramme adaptative, False sauf éclairage variable
-use_thresholding = False  # Binarisation de l'image pour améliorer le contraste
-
-# Prétraitement optimal
-sharpen_alpha = 1.5  # Contraste
-sharpen_beta = -0.5  # Netteté
-sharpen_gamma = 0  # Luminosité
-
-# Détection ArUco optimale
-adaptive_thresh_constant = 7  # Ajustement aux conditions d'éclairage
-min_marker_perimeter_rate = 0.01  # Taille minimale du marqueur
-max_marker_perimeter_rate = 4.0  # Taille maximale du marqueur
-polygonal_approx_accuracy_rate = 0.1  # Précision de détection des coins
-
-
 # ---------------------------------------------------------------------------
 # Camera Configuration
 # ---------------------------------------------------------------------------
 
-CAMERA_WIDTH = 4000
-CAMERA_HEIGHT = 4000
+CAMERA_WIDTH = 4056
+CAMERA_HEIGHT = 3040
 CAMERA = CameraMode.PI
 
 # ---------------------------------------------------------------------------
@@ -62,13 +39,6 @@ CAMERA = CameraMode.PI
 # ---------------------------------------------------------------------------
 
 LOG_LEVEL = "INFO"
-
-# ---------------------------------------------------------------------------
-# Feature Toggles
-# ---------------------------------------------------------------------------
-
-ARUCO_DETECTION = ENABLE
-UI = ENABLE
 
 # ---------------------------------------------------------------------------
 # Flask Server Configuration
@@ -87,7 +57,7 @@ CAMERA_DIR = PICTURES_DIR / "camera"
 LOG_DIR = PROJECT_DIR / "logs"
 VISION_DIR = PROJECT_DIR / "vision_python"
 CALIBRATION_DIR = VISION_DIR / "config" / "calibrations"
-CALIBRATION_FILE = CALIBRATION_DIR / "80_lens" / "camera_calibration_4000x4000.npz"
+CALIBRATION_FILE = CALIBRATION_DIR / "80_lens" / "camera_calibration_4056x3040.npz"
 EMULATED_CAM_DIR = CAMERA_DIR / "2026-01-09-playground-ready"
 
 
@@ -95,23 +65,6 @@ EMULATED_CAM_DIR = CAMERA_DIR / "2026-01-09-playground-ready"
 # Fixed Aruco marker positions
 # ---------------------------------------------------------------------------
 
-# Define destination points (real world coordinates in mm)
-# Camera positioned outside terrain, middle of 3000mm side
-# Terrain: 3000mm (width/X) x 2000mm (depth/Y)
-FIXED_MARKER_20 = aruco.Aruco(600, 600, 1, 20)
-FIXED_MARKER_21 = aruco.Aruco(2400, 600, 1, 21)
-FIXED_MARKER_22 = aruco.Aruco(600, 1400, 1, 22)
-FIXED_MARKER_23 = aruco.Aruco(2400, 1400, 1, 23)
-FIXED_MARKERS = [FIXED_MARKER_20, FIXED_MARKER_21, FIXED_MARKER_22, FIXED_MARKER_23]
-
-# Playground corners in real world coordinates (mm)
-PLAYGROUND_CORNERS = [(0.0, 0.0), (0.0, 2000.0), (3000.0, 2000.0), (3000.0, 0.0)]
-
-# Deprecated aliases (for backward compatibility)
-A1 = FIXED_MARKER_20
-B1 = FIXED_MARKER_21
-C1 = FIXED_MARKER_22
-D1 = FIXED_MARKER_23
 
 # ---------------------------------------------------------------------------
 # Getter Functions
@@ -120,12 +73,12 @@ D1 = FIXED_MARKER_23
 
 def is_aruco_detection_enabled():
     """Returns whether ArUco detection is enabled."""
-    return ARUCO_DETECTION
+    return True
 
 
 def is_ui_enabled():
     """Returns whether the UI is enabled."""
-    return UI
+    return True
 
 
 def get_camera_resolution():
@@ -156,22 +109,6 @@ def get_flask_server_config():
 def get_logging_level():
     """Returns the logging level."""
     return LOG_LEVEL
-
-
-def get_image_processing_params():
-    """Returns a dictionary of image processing parameters."""
-    return {
-        "use_unround": use_unround,
-        "use_clahe": use_clahe,
-        "use_thresholding": use_thresholding,
-        "sharpen_alpha": sharpen_alpha,
-        "sharpen_beta": sharpen_beta,
-        "sharpen_gamma": sharpen_gamma,
-        "adaptive_thresh_constant": adaptive_thresh_constant,
-        "min_marker_perimeter_rate": min_marker_perimeter_rate,
-        "max_marker_perimeter_rate": max_marker_perimeter_rate,
-        "polygonal_approx_accuracy_rate": polygonal_approx_accuracy_rate,
-    }
 
 
 def get_camera_params():
@@ -235,30 +172,3 @@ def get_camera_calibration_file():
 def get_emulated_cam_directory():
     """Returns the emulated images directory path."""
     return EMULATED_CAM_DIR
-
-
-def get_fixed_aruco_markers():
-    """Returns list of fixed ArUco markers in real world coordinates."""
-    return FIXED_MARKERS
-
-
-def get_playground_corners():
-    """Returns playground corners in real world coordinates (mm)."""
-    return PLAYGROUND_CORNERS
-
-
-def get_camera_calibration_matrices():
-    """Returns camera calibration matrices (camera_matrix, dist_coeffs, newcameramtx, roi)."""
-    from vision_python.src.img_processing import unround_img
-
-    calibration_file = get_camera_calibration_file()
-    img_size = get_camera_resolution()
-
-    camera_matrix, dist_coeffs = unround_img.import_camera_calibration(
-        str(calibration_file)
-    )
-    newcameramtx, roi = unround_img.process_new_camera_matrix(
-        camera_matrix, dist_coeffs, img_size
-    )
-
-    return camera_matrix, dist_coeffs, newcameramtx, roi

@@ -172,17 +172,9 @@ class Webcam(Camera):
 
     def take_picture(self) -> np.ndarray:
         """
-        Capture une photo et la retourne.
-
-        :return: Image capturée en tant que np.ndarray (format RGB)
-        """
-        return self.capture_array()
-
-    def capture_array(self) -> np.ndarray:
-        """
         Capture une image depuis la webcam.
 
-        :return: Image en tant que np.ndarray (format RGB)
+        :return: Image capturée en tant que np.ndarray (format RGB)
         """
         try:
             if self.capture is None:
@@ -195,6 +187,7 @@ class Webcam(Camera):
 
             # OpenCV lit les images en BGR, on convertit en RGB
             frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            logger.debug(f"Image capturée: {frame_rgb.shape}")
 
             return frame_rgb
 

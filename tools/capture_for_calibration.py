@@ -80,11 +80,17 @@ def main():
                 filename = f"{timestamp}_{image_width}x{image_height}_capture.jpg"
                 filepath = output_path / filename
 
-                # Capturer et sauvegarder l'image
-                _, returned_filepath = cam.capture_image(pictures_dir=output_path)
+                # Capturer l'image
+                import cv2
 
-                # Renommer avec le format souhaité
-                returned_filepath.rename(filepath)
+                image_array = cam.take_picture()
+
+                # Sauvegarder manuellement l'image
+                cv2.imwrite(
+                    str(filepath),
+                    cv2.cvtColor(image_array, cv2.COLOR_RGB2BGR),
+                    [cv2.IMWRITE_JPEG_QUALITY, 100],
+                )
 
                 logger.info(f"✓ Image capturée : {filename}")
 

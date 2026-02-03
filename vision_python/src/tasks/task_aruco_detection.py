@@ -14,14 +14,10 @@ import time
 import cv2
 import logging
 import numpy as np
-import os
 from datetime import datetime
 from pathlib import Path
 
 from vision_python.src.aruco import aruco
-from vision_python.src.img_processing import detect_aruco
-from vision_python.src.img_processing import unround_img
-from vision_python.src.img_processing import processing_pipeline as pipeline
 from vision_python.src.camera import camera_factory
 from vision_python.config import config
 
@@ -78,13 +74,11 @@ def run(image_queue=None) -> None:
                 # Use existing folder from config, don't create today's folder
                 daily_pictures_dir = config.get_emulated_cam_directory()
                 logger.info(f"Using emulated camera directory: {daily_pictures_dir}")
-            elif camera_mode == config.CameraMode.PI:
-                # Create subdirectory for today's date for real camera
-                pictures_dir = config.get_camera_directory()
-                today_date = datetime.now().strftime("%Y-%m-%d")
-                daily_pictures_dir = Path(pictures_dir) / today_date
-                os.makedirs(daily_pictures_dir, exist_ok=True)
-                logger.info(f"Using daily directory: {daily_pictures_dir}")
+            else:
+                # No need to create directories for real camera anymore
+                logger.info(
+                    "Using PiCamera in direct capture mode (no automatic saving)"
+                )
 
         except Exception as e:
             logger.error(
@@ -95,17 +89,16 @@ def run(image_queue=None) -> None:
         # Initialize camera
         try:
             camera = camera_factory.get_camera(camera=camera_mode)
-            camera.set_parameters(
-                {
-                    "width": img_width,
-                    "height": img_height,
-                    "image_folder": (
-                        daily_pictures_dir
-                        if camera_mode == config.CameraMode.EMULATED
-                        else None
-                    ),
-                }
-            )
+            params = {
+                "width": img_width,
+                "height": img_height,
+            }
+
+            # Only emulated camera needs image_folder parameter
+            if camera_mode == config.CameraMode.EMULATED:
+                params["image_folder"] = daily_pictures_dir
+
+            camera.set_parameters(params)
             camera.init()
             camera.start()
         except Exception as e:
@@ -113,14 +106,18 @@ def run(image_queue=None) -> None:
             raise
 
         # Load camera calibration matrices
-        camera_matrix, dist_coeffs, newcameramtx, roi = (
-            config.get_camera_calibration_matrices()
-        )
+        camera_matrix = aruco.get_camera_matrix()
+        dist_matrix = aruco.get_distortion_matrix()
         logger.info("Calibration parameters imported successfully")
 
         # Initialize ArUco detector
-        aruco_detector = detect_aruco.init_aruco_detector()
+        aruco_detector = aruco.get_aruco_detector()
         logger.info("ArUco detector initialized successfully")
+
+        # Initialize mask and inverse homography (will be computed on first frame)
+        mask = None
+        H_inv = None
+        ALLOWED_IDS = [20, 21, 22, 23, 41, 36, 47]
 
         end = False
         consecutive_errors = 0
@@ -129,9 +126,7 @@ def run(image_queue=None) -> None:
         while end is False:
             # Take a picture
             try:
-                original_img, original_filepath = camera.capture_image(
-                    pictures_dir=daily_pictures_dir
-                )
+                original_img = camera.take_picture()
                 consecutive_errors = 0  # Reset error counter on successful capture
 
             except Exception as e:
@@ -151,17 +146,16 @@ def run(image_queue=None) -> None:
 
                     try:
                         camera = camera_factory.get_camera(camera=camera_mode)
-                        camera.set_parameters(
-                            {
-                                "width": img_width,
-                                "height": img_height,
-                                "image_folder": (
-                                    daily_pictures_dir
-                                    if camera_mode == config.CameraMode.EMULATED
-                                    else None
-                                ),
-                            }
-                        )
+                        params = {
+                            "width": img_width,
+                            "height": img_height,
+                        }
+
+                        # Only emulated camera needs image_folder parameter
+                        if camera_mode == config.CameraMode.EMULATED:
+                            params["image_folder"] = daily_pictures_dir
+
+                        camera.set_parameters(params)
                         camera.init()
                         camera.start()
                         consecutive_errors = 0
@@ -177,34 +171,95 @@ def run(image_queue=None) -> None:
             # Convert RGB to BGR for OpenCV processing
             img_bgr = cv2.cvtColor(original_img, cv2.COLOR_RGB2BGR)
 
-            # Use centralized processing pipeline for ArUco detection
-            detected_markers, final_img, perspective_matrix, metadata = (
-                pipeline.process_image_for_aruco_detection(
-                    img=img_bgr,
-                    aruco_detector=aruco_detector,
-                    camera_matrix=camera_matrix,
-                    dist_coeffs=dist_coeffs,
-                    newcameramtx=newcameramtx,
-                    fixed_markers=FIXED_MARKERS,
-                    playground_corners=None,  # No playground masking for real-time detection
-                    use_unround=use_unround,
-                    use_clahe=use_clahe,
-                    use_thresholding=use_thresholding,
-                    sharpen_alpha=sharpen_alpha,
-                    sharpen_beta=sharpen_beta,
-                    sharpen_gamma=sharpen_gamma,
-                    use_mask_playground=False,  # Disabled for real-time performance
-                    use_straighten_image=False,  # Disabled for real-time performance
-                    save_debug_images=False,  # No debug images in production
-                    apply_contrast_boost=False,
-                )
+            # ========== STEP 1: COMPUTE MASK AND INVERSE HOMOGRAPHY (first frame only) ==========
+            if mask is None or H_inv is None:
+                try:
+                    mask, H_inv = aruco.find_mask(aruco_detector, img_bgr, scale_y=1.1)
+                    logger.info("Mask and inverse homography computed successfully")
+                except Exception as e:
+                    logger.error(f"Failed to compute mask and homography: {e}")
+                    time.sleep(0.1)
+                    continue
+
+            # ========== STEP 2: DETECT MARKERS ==========
+            corners, ids, rejected, detection_timings = aruco.detect_markers(
+                aruco_detector, img_bgr, mask=mask
             )
 
-            # Extract detected tags from markers
-            tags_from_img = [marker for marker, _ in detected_markers]
+            # ========== STEP 3: FILTER ALLOWED IDS ==========
+            valid_ids = []
+            valid_corners = []
+
+            if ids is not None:
+                for i, marker_id in enumerate(ids):
+                    mid = (
+                        marker_id[0] if isinstance(marker_id, np.ndarray) else marker_id
+                    )
+                    if mid in ALLOWED_IDS:
+                        valid_ids.append(mid)
+                        valid_corners.append(corners[i])
+
+            # ========== STEP 4: CALCULATE CENTERS ==========
+            centers = []
+            if valid_corners:
+                centers = aruco.find_center_coord(valid_corners)
+
+            # ========== STEP 5: POSE ESTIMATION ==========
+            real_coords = None
+            if H_inv is not None and centers:
+                z_values = [30] * len(centers)  # 30mm height for all markers
+                real_coords = aruco.pose_estimation_homography(
+                    points=centers,
+                    homography_inv=H_inv,
+                    K=camera_matrix,
+                    D=dist_matrix,
+                    z_values=z_values,
+                )
+
+                # Apply pose corrections
+                for i in range(len(real_coords)):
+                    x, y, z = real_coords[i]
+                    x_corrected, y_corrected = aruco.apply_pose_correction(x, y)
+                    real_coords[i] = (x_corrected, y_corrected, z)
+
+            # ========== STEP 6: BUILD DETECTED MARKERS LIST ==========
+            tags_from_img = []
+
+            for i, mid in enumerate(valid_ids):
+                # Create a simple tag object (dict) with detection data
+                tag = {
+                    "aruco_id": mid,
+                    "center_x": int(centers[i][0]) if centers else None,
+                    "center_y": int(centers[i][1]) if centers else None,
+                    "x": real_coords[i][0] if real_coords else None,
+                    "y": real_coords[i][1] if real_coords else None,
+                    "z": real_coords[i][2] if real_coords else None,
+                }
+                tags_from_img.append(tag)
+
+            # ========== STEP 7: ANNOTATE IMAGE FOR VISUALIZATION ==========
+            final_img = img_bgr.copy()
+
+            if len(tags_from_img) > 0:
+                # Annotate with counter
+                final_img = aruco.annotate_img_with_counter(
+                    final_img, len(tags_from_img)
+                )
+
+                # Annotate with IDs
+                if centers:
+                    final_img = aruco.annotate_img_with_ids(
+                        final_img, centers, [tag["aruco_id"] for tag in tags_from_img]
+                    )
+
+                # Annotate with real coordinates if available
+                if real_coords:
+                    final_img = aruco.annotate_img_with_real_coords(
+                        final_img, centers, real_coords
+                    )
 
             # Log detection results
-            if not metadata["perspective_transform_computed"]:
+            if H_inv is None:
                 logger.info("Missing reference aruco markers in the image")
                 logger.warning("Real world coordinates not calculated for this frame")
             else:
@@ -212,9 +267,11 @@ def run(image_queue=None) -> None:
                 logger.info(f"Detected {len(tags_from_img)} ArUco markers")
 
             # sort aruco by id for easier reading
-            tags_from_img.sort(key=lambda tag: tag.aruco_id)
+            tags_from_img.sort(key=lambda tag: tag["aruco_id"])
             for tag in tags_from_img:
-                tag.print()
+                logger.info(
+                    f"ID {tag['aruco_id']}: ({tag['x']:.1f}, {tag['y']:.1f}, {tag['z']:.1f}) mm"
+                )
 
             # Send image and detected tags to UI queue if enabled
             if image_queue is not None:
@@ -230,20 +287,12 @@ def run(image_queue=None) -> None:
                         serializable_tags = []
                         for tag in tags_from_img:
                             tag_data = {
-                                "id": tag.aruco_id,
-                                "x": float(tag.x),
-                                "y": float(tag.y),
-                                "z": float(tag.z),
-                                "real_x": (
-                                    float(tag.real_x)
-                                    if hasattr(tag, "real_x")
-                                    else None
-                                ),
-                                "real_y": (
-                                    float(tag.real_y)
-                                    if hasattr(tag, "real_y")
-                                    else None
-                                ),
+                                "id": tag["aruco_id"],
+                                "x": float(tag["x"]) if tag["x"] is not None else None,
+                                "y": float(tag["y"]) if tag["y"] is not None else None,
+                                "z": float(tag["z"]) if tag["z"] is not None else None,
+                                "real_x": None,
+                                "real_y": None,
                             }
                             serializable_tags.append(tag_data)
 

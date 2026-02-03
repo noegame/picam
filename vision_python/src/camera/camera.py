@@ -70,8 +70,17 @@ class Camera(ABC):
     @abstractmethod
     def take_picture(self) -> np.ndarray:
         """
-        Capture une photo et la retourne.
+        Capture une photo et la retourne directement.
 
         :return: Image capturée sous forme de tableau numpy (format RGB)
+        """
+        pass
+
+    @abstractmethod
+    def close(self) -> None:
+        """
+        Ferme et libère toutes les ressources de la caméra.
+
+        Alias pour stop() pour une interface uniforme.
         """
         pass

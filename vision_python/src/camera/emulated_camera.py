@@ -116,19 +116,14 @@ class EmulatedCamera(Camera):
 
     def take_picture(self) -> np.ndarray:
         """
-        Capture une photo et la retourne.
+        'Capture' une image en lisant le fichier suivant du dossier.
 
         :return: Image capturée en tant que np.ndarray (format RGB)
         """
-        return self.capture_array()
-
-    def capture_array(self) -> np.ndarray:
-        """
-        'Capture' une image en lisant un fichier du dossier.
-
-        :return: Image en tant que np.ndarray (format RGB)
-        """
         try:
+            if not self.image_files:
+                raise Exception("Aucune image disponible dans le dossier configuré")
+
             source_path = self.image_files[self.current_image_index]
             image_array = cv2.imread(str(source_path))  # cv2 lit en BGR
 
@@ -145,41 +140,6 @@ class EmulatedCamera(Camera):
             logger.info(f"Image 'capturée' depuis: {source_path.name}")
 
             return image_array_rgb
-        except Exception as e:
-            logger.error(f"Erreur lors de la capture simulée: {e}")
-            raise
-
-    def capture_image(self, pictures_dir: Path) -> tuple[np.ndarray, Path]:
-        """
-        'Capture' une image en lisant un fichier directement.
-
-        :param pictures_dir: Répertoire de destination (non utilisé pour la caméra émulée)
-        :return: Tuple (image en tant que np.ndarray, chemin du fichier source)
-
-        Note: Cette méthode ne sauvegarde pas l'image, elle retourne simplement
-        le chemin de l'image source utilisée.
-        """
-        try:
-            source_path = self.image_files[self.current_image_index]
-
-            # Lire l'image directement depuis le dossier source
-            image_array = cv2.imread(str(source_path))  # cv2 lit en BGR
-
-            if image_array is None:
-                raise Exception(f"Impossible de lire l'image: {source_path}")
-
-            # Convertir BGR en RGB pour cohérence avec les autres caméras
-            image_array_rgb = cv2.cvtColor(image_array, cv2.COLOR_BGR2RGB)
-
-            # Passer à l'image suivante (boucle circulaire)
-            self.current_image_index = (self.current_image_index + 1) % len(
-                self.image_files
-            )
-            logger.info(
-                f"Image 'capturée' depuis: {source_path.name} (pas de copie sauvegardée)"
-            )
-
-            return image_array_rgb, source_path
         except Exception as e:
             logger.error(f"Erreur lors de la capture simulée: {e}")
             raise

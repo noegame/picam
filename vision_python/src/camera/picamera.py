@@ -7,12 +7,9 @@ Implémente la classe PiCamera dérivée de Camera.
 # Importations
 # ---------------------------------------------------------------------------
 
-from pathlib import Path
 import numpy as np
-import cv2
 import logging
 from typing import Dict, Any
-from datetime import datetime
 from .camera import Camera
 from picamera2 import Picamera2
 
@@ -63,11 +60,9 @@ class PiCamera(Camera):
         """
         Configure les paramètres de la caméra.
 
-        - output_folder (str): Dossier de sortie pour les images capturées
         - width (int): Largeur de l'image
         - height (int): Hauteur de l'image
         - config_mode (str): Mode de configuration ("preview" ou "still")
-        - save_format (str): Format de sauvegarde des images ("jpeg", "png", etc.)
 
         Contrôles caméra (si la caméra est déjà initialisée):
         - ExposureTime, AnalogueGain, etc.
@@ -89,18 +84,6 @@ class PiCamera(Camera):
                     self.parameters["height"] = value
                     needs_reconfigure = True
                 logger.info(f"Hauteur configurée: {self.parameters.get('height')}")
-
-            elif key == "output_folder":
-                self.parameters["output_folder"] = value
-                logger.info(
-                    f"Dossier de sortie configuré: {self.parameters.get('output_folder')}"
-                )
-
-            elif key == "save_format":
-                self.parameters["save_format"] = value
-                logger.info(
-                    f"Format de sauvegarde configuré: {self.parameters.get('save_format')}"
-                )
 
             elif key == "config_mode":
                 if value not in ["preview", "still"]:
@@ -160,42 +143,22 @@ class PiCamera(Camera):
 
     def take_picture(self) -> np.ndarray:
         """
-        Capture une photo et la retourne.
+        Capture une photo et la retourne directement (sans sauvegarde).
 
         :return: Image capturée en tant que np.ndarray (format RGB)
         """
-
-        # Build filename with timestamp
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
-        filename = f"{timestamp}.{self.parameters.get('save_format', 'jpg')}"
-        output_folder = self.parameters.get("output_folder", ".")
-        pictures_dir = Path(output_folder)
-        pictures_dir.mkdir(parents=True, exist_ok=True)
-        filepath = pictures_dir / filename
-
-        # Capture image
-        picture = self.picamera2.capture_array()
-
-        # Sauvegarde de l'image
         try:
-            if self.parameters.get("save_format", "jpg").lower() == "png":
-                cv2.imwrite(
-                    str(filepath),
-                    cv2.cvtColor(picture, cv2.COLOR_RGB2BGR),
-                    [cv2.IMWRITE_PNG_COMPRESSION, 0],  # 0 for no compression
-                )
-            else:  # Default to JPEG
-                cv2.imwrite(
-                    str(filepath),
-                    cv2.cvtColor(picture, cv2.COLOR_RGB2BGR),
-                    [cv2.IMWRITE_JPEG_QUALITY, 100],  # 100 for best quality
-                )
-            logger.info(f"Image sauvegardée: {filepath}")
-        except Exception as e:
-            logger.error(f"Erreur lors de la sauvegarde de l'image: {e}")
-            raise
+            if not self.picamera2:
+                raise Exception("La caméra n'est pas initialisée.")
 
-        return picture
+            # Capture directe de l'image
+            picture = self.picamera2.capture_array()
+            logger.debug(f"Image capturée: {picture.shape}")
+            return picture
+
+        except Exception as e:
+            logger.error(f"Erreur lors de la capture d'image: {e}")
+            raise
 
     def close(self):
         """Ferme et nettoie la caméra proprement (alias pour stop())."""

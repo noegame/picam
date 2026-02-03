@@ -1060,12 +1060,3 @@ def process_folder(input_folder: str, output_folder: str):
             mask=mask,
             homography_inv=H_inv,
         )
-
-
-if __name__ == "__main__":
-    EXPECTED_POSITIONS = get_expected_position()
-    camera_matrix = get_camera_matrix()
-    dist_matrix = get_distortion_matrix()
-    input_folder = get_input_folder()
-    output_folder = get_output_folder()
-    process_folder(input_folder, output_folder)
