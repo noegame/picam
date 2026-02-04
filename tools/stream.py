@@ -7,10 +7,8 @@
 # ---------------------------------------------------------------------------
 
 import io
-import time
 import threading
 import picamera2
-import cv2
 from flask import Flask, Response
 
 # ---------------------------------------------------------------------------
@@ -32,10 +30,9 @@ def initialize_camera():
         with camera_lock:
             if camera is None:  # Double-check locking
                 camera = picamera2.Picamera2()
-                # Use RGB888 format for direct RGB output without conversion
                 camera.configure(
                     camera.create_preview_configuration(
-                        main={"format": "RGB888", "size": (2000, 2000)}
+                        main={"format": "XRGB8888", "size": (4056, 3040)}
                     )
                 )
                 camera.start()
@@ -44,24 +41,14 @@ def initialize_camera():
 def capture_frame():
     """Capture une frame et la met en cache"""
     global current_frame
+    stream = io.BytesIO()
     try:
-        # Capture l'image en tant qu'array (RGB888 format - already RGB)
-        array = camera.capture_array()
-        
-        # Encode directly to JPEG using OpenCV (faster than PIL)
-        # cv2.imencode expects BGR, so convert RGB to BGR
-        array_bgr = cv2.cvtColor(array, cv2.COLOR_RGB2BGR)
-        success, jpeg_buffer = cv2.imencode('.jpg', array_bgr)
-        
-        if success:
-            with frame_lock:
-                current_frame = jpeg_buffer.tobytes()
-        else:
-            print("Erreur lors de l'encodage JPEG")
+        camera.capture_file(stream, format="jpeg")
+        stream.seek(0)
+        with frame_lock:
+            current_frame = stream.read()
     except Exception as e:
         print(f"Erreur lors de la capture: {e}")
-        import traceback
-        traceback.print_exc()
 
 
 def generate_frames():
@@ -69,10 +56,12 @@ def generate_frames():
     initialize_camera()
 
     # Capture les frames continuellement en arrière-plan
+    import threading
+
     def capture_loop():
         while True:
             capture_frame()
-            time.sleep(0.20)  # ~25 FPS
+            threading.Event().wait(0.04)  # ~25 FPS
 
     # Démarre le thread de capture
     capture_thread = threading.Thread(target=capture_loop, daemon=True)
@@ -86,7 +75,7 @@ def generate_frames():
             yield b"--frame\r\nContent-Type: image/jpeg\r\nContent-Length: " + str(
                 len(frame_data)
             ).encode() + b"\r\n\r\n" + frame_data + b"\r\n"
-        time.sleep(0.01)
+        threading.Event().wait(0.01)
 
 
 @app.route("/video_feed")
