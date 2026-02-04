@@ -62,7 +62,22 @@ ssh roboteseo@raspberrypi-robot.local
 ```
 Vous pouvez remplacer au besoin "raspberrypi-robot.local" par l'adresse IP de votre Raspberry Pi ou le nom d'hôte que vous avez configuré ainsi que "roboteseo" par le nom d'utilisateur que vous avez choisi. 
 
-7. Installer les dépendances nécessaires pour le projet
+7. Configuration de la caméra
+
+**Note:** Sur les versions modernes de Raspberry Pi OS, la caméra fonctionne directement avec libcamera sans configuration supplémentaire. L'option "Camera" ou "Legacy Camera" n'apparaît plus dans raspi-config depuis que l'ancien pilote camera a été supprimé.
+
+La caméra devrait être détectée automatiquement. Pour vérifier :
+``` shell
+rpicam-hello --list-cameras
+```
+
+Si vous utilisez une ancienne version de Raspberry Pi OS et que l'option `Legacy Camera` est disponible dans raspi-config, vous pouvez l'activer :
+``` shell
+sudo raspi-config
+# Interface Options > Legacy Camera > Yes
+```
+
+8. Installer les dépendances nécessaires pour le projet
 ``` shell
 sudo mkdir dev
 cd dev

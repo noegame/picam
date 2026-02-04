@@ -57,7 +57,7 @@ def main():
         cam = get_camera(
             w=image_width,
             h=image_height,
-            camera=config.CameraMode.PI,
+            camera="picamera",
             camera_param="still",
         )
         logger.info("✓ Caméra initialisée en mode STILL (haute qualité)")

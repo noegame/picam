@@ -1,0 +1,102 @@
+2026-02-03 20:41:03,561 - main - INFO - Created shared image queue for ArUco detection and UI
+2026-02-03 20:41:03,564 - main - INFO - Started TaskArucoDetection
+2026-02-03 20:41:03,569 - main - INFO - Started TaskUI
+2026-02-03 20:41:03,570 - main - INFO - All processes have started. Press Ctrl+C to stop...
+2026-02-03 20:41:03,571 - vision_python.src.tasks.task_ui - INFO - UI task started
+2026-02-03 20:41:03,575 - vision_python.src.tasks.task_ui - INFO - Queue consumer thread started, waiting for frames...
+2026-02-03 20:41:03,575 - vision_python.src.tasks.task_ui - INFO - Started queue consumer thread
+2026-02-03 20:41:03,576 - vision_python.src.tasks.task_ui - INFO - Starting Flask server on http://0.0.0.0:5000
+2026-02-03 20:41:03,585 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.1.249:5000
+2026-02-03 20:41:03,586 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2026-02-03 20:41:15,282 - werkzeug - INFO - 127.0.0.1 - - [03/Feb/2026 20:41:15] "GET / HTTP/1.1" 200 -
+2026-02-03 20:41:15,472 - vision_python.src.tasks.task_ui - INFO - Frame generator started
+2026-02-03 20:41:15,612 - werkzeug - INFO - 127.0.0.1 - - [03/Feb/2026 20:41:15] "[33mGET /favicon.ico HTTP/1.1[0m" 404 -
+2026-02-03 20:41:36,304 - werkzeug - INFO - 127.0.0.1 - - [03/Feb/2026 20:41:36] "GET / HTTP/1.1" 200 -
+2026-02-03 20:41:37,990 - vision_python.src.tasks.task_ui - INFO - Frame generator started
+2026-02-03 20:43:10,241 - main - INFO - Created shared image queue for ArUco detection and UI
+2026-02-03 20:43:10,245 - main - INFO - Started TaskArucoDetection
+2026-02-03 20:43:10,249 - main - INFO - Started TaskUI
+2026-02-03 20:43:10,251 - main - INFO - All processes have started. Press Ctrl+C to stop...
+2026-02-03 20:43:10,251 - vision_python.src.tasks.task_ui - INFO - UI task started
+2026-02-03 20:43:10,255 - vision_python.src.tasks.task_ui - INFO - Queue consumer thread started, waiting for frames...
+2026-02-03 20:43:10,256 - vision_python.src.tasks.task_ui - INFO - Started queue consumer thread
+2026-02-03 20:43:10,256 - vision_python.src.tasks.task_ui - INFO - Starting Flask server on http://0.0.0.0:5000
+2026-02-03 20:47:46,140 - main - INFO - Created shared image queue for ArUco detection and UI
+2026-02-03 20:47:46,143 - main - INFO - Started TaskArucoDetection
+2026-02-03 20:47:46,149 - vision_python.src.tasks.task_ui - INFO - UI task started
+2026-02-03 20:47:46,150 - main - INFO - Started TaskUI
+2026-02-03 20:47:46,150 - main - INFO - All processes have started. Press Ctrl+C to stop...
+2026-02-03 20:47:46,153 - vision_python.src.tasks.task_ui - INFO - Queue consumer thread started, waiting for frames...
+2026-02-03 20:47:46,153 - vision_python.src.tasks.task_ui - INFO - Started queue consumer thread
+2026-02-03 20:47:46,154 - vision_python.src.tasks.task_ui - INFO - Starting Flask server on http://0.0.0.0:5000
+2026-02-03 20:47:46,163 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.1.249:5000
+2026-02-03 20:47:46,163 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2026-02-03 20:47:54,560 - werkzeug - INFO - 127.0.0.1 - - [03/Feb/2026 20:47:54] "GET / HTTP/1.1" 200 -
+2026-02-03 20:47:54,675 - werkzeug - INFO - 127.0.0.1 - - [03/Feb/2026 20:47:54] "GET / HTTP/1.1" 200 -
+2026-02-03 20:47:54,746 - vision_python.src.tasks.task_ui - INFO - Frame generator started
+2026-02-03 20:47:59,015 - vision_python.src.tasks.task_ui - INFO - Frame generator started
+2026-02-03 20:48:00,574 - werkzeug - INFO - 127.0.0.1 - - [03/Feb/2026 20:48:00] "GET / HTTP/1.1" 200 -
+2026-02-03 20:48:00,769 - vision_python.src.tasks.task_ui - INFO - Frame generator started
+2026-02-03 20:48:06,047 - main - INFO - Stop signal received (Ctrl+C). Gracefully stopping processes...
+2026-02-03 20:48:06,047 - main - INFO - Stop signal received (Ctrl+C). Gracefully stopping processes...
+2026-02-03 20:48:06,047 - main - INFO - Stopping process TaskUI...
+2026-02-03 20:48:06,049 - main - INFO - All processes have been stopped. Closing...
+2026-02-03 20:49:06,687 - main - INFO - Created shared image queue for ArUco detection and UI
+2026-02-03 20:49:06,690 - main - INFO - Started TaskArucoDetection
+2026-02-03 20:49:06,698 - vision_python.src.tasks.task_ui - INFO - UI task started
+2026-02-03 20:49:06,696 - main - INFO - Started TaskUI
+2026-02-03 20:49:06,699 - main - INFO - All processes have started. Press Ctrl+C to stop...
+2026-02-03 20:49:06,702 - vision_python.src.tasks.task_ui - INFO - Queue consumer thread started, waiting for frames...
+2026-02-03 20:49:06,702 - vision_python.src.tasks.task_ui - INFO - Started queue consumer thread
+2026-02-03 20:49:06,702 - vision_python.src.tasks.task_ui - INFO - Starting Flask server on http://0.0.0.0:5000
+2026-02-03 20:49:06,711 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.1.249:5000
+2026-02-03 20:49:06,712 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2026-02-03 20:49:11,382 - main - INFO - Stop signal received (Ctrl+C). Gracefully stopping processes...
+2026-02-03 20:49:11,382 - main - INFO - Stop signal received (Ctrl+C). Gracefully stopping processes...
+2026-02-03 20:49:11,383 - vision_python.src.tasks.task_ui - ERROR - Error running Flask server: can only test a child process
+2026-02-03 20:49:11,389 - main - INFO - Stopping process TaskUI...
+2026-02-03 20:49:11,391 - main - INFO - All processes have been stopped. Closing...
+2026-02-03 20:51:36,620 - main - INFO - Created shared image queue for ArUco detection and UI
+2026-02-03 20:51:36,623 - main - INFO - Started TaskArucoDetection
+2026-02-03 20:51:36,630 - main - INFO - Started TaskUI
+2026-02-03 20:51:36,631 - main - INFO - All processes have started. Press Ctrl+C to stop...
+2026-02-03 20:51:36,631 - vision_python.src.tasks.task_ui - INFO - UI task started
+2026-02-03 20:51:36,636 - vision_python.src.tasks.task_ui - INFO - Queue consumer thread started, waiting for frames...
+2026-02-03 20:51:36,636 - vision_python.src.tasks.task_ui - INFO - Started queue consumer thread
+2026-02-03 20:51:36,636 - vision_python.src.tasks.task_ui - INFO - Starting Flask server on http://0.0.0.0:5000
+2026-02-03 20:51:36,651 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.1.249:5000
+2026-02-03 20:51:36,652 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2026-02-03 20:52:07,334 - main - INFO - Stop signal received (Ctrl+C). Gracefully stopping processes...
+2026-02-03 20:52:07,335 - main - INFO - Stop signal received (Ctrl+C). Gracefully stopping processes...
+2026-02-03 20:52:07,335 - main - INFO - Stopping process TaskUI...
+2026-02-03 20:52:07,337 - main - INFO - All processes have been stopped. Closing...
+2026-02-03 20:52:09,002 - main - INFO - Created shared image queue for ArUco detection and UI
+2026-02-03 20:52:09,006 - main - INFO - Started TaskArucoDetection
+2026-02-03 20:52:09,010 - main - INFO - Started TaskUI
+2026-02-03 20:52:09,011 - main - INFO - All processes have started. Press Ctrl+C to stop...
+2026-02-03 20:52:09,012 - vision_python.src.tasks.task_ui - INFO - UI task started
+2026-02-03 20:52:09,015 - vision_python.src.tasks.task_ui - INFO - Queue consumer thread started, waiting for frames...
+2026-02-03 20:52:09,015 - vision_python.src.tasks.task_ui - INFO - Started queue consumer thread
+2026-02-03 20:52:09,015 - vision_python.src.tasks.task_ui - INFO - Starting Flask server on http://0.0.0.0:5000
+2026-02-03 20:52:09,025 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.1.249:5000
+2026-02-03 20:52:09,025 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2026-02-03 20:52:15,312 - main - INFO - Stop signal received (Ctrl+C). Gracefully stopping processes...
+2026-02-03 20:52:15,312 - main - INFO - Stop signal received (Ctrl+C). Gracefully stopping processes...
+2026-02-03 20:52:15,312 - vision_python.src.tasks.task_ui - ERROR - Error running Flask server: can only test a child process
+2026-02-03 20:52:15,312 - main - INFO - Stopping process TaskUI...
+2026-02-03 20:52:15,314 - main - INFO - All processes have been stopped. Closing...

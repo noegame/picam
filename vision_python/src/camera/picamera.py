@@ -31,7 +31,13 @@ class PiCamera(Camera):
         """Initialise le matériel de la caméra Raspberry Pi."""
         from picamera2 import Picamera2
 
-        self.picamera2 = Picamera2()
+        try:
+            self.picamera2 = Picamera2()
+            logger.info("PiCamera2 initialisée avec succès")
+        except Exception as e:
+            logger.error(f"Impossible d'initialiser PiCamera2: {e}")
+            logger.error("Vérifiez que la caméra est bien connectée et activée")
+            raise RuntimeError(f"Échec de l'initialisation de PiCamera2: {e}") from e
         self.parameters = {}
 
     def start(self) -> None:

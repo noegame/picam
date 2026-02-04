@@ -11,28 +11,17 @@ logging, feature toggles, and directory paths.
 # Imports
 # ---------------------------------------------------------------------------
 
-from enum import Enum
 from pathlib import Path
 from vision_python.src.aruco import aruco
-
-# ---------------------------------------------------------------------------
-# Enums and Constants
-# ---------------------------------------------------------------------------
-
-
-class CameraMode(Enum):
-    PI = 1
-    COMPUTER = 2
-    EMULATED = 3
-
 
 # ---------------------------------------------------------------------------
 # Camera Configuration
 # ---------------------------------------------------------------------------
 
+# Camera modes: 'picamera', 'webcam', 'emulated'
 CAMERA_WIDTH = 4056
 CAMERA_HEIGHT = 3040
-CAMERA = CameraMode.PI
+CAMERA = "picamera"
 
 # ---------------------------------------------------------------------------
 # Logging Configuration

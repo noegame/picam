@@ -21,16 +21,6 @@ from vision_python.src.aruco import aruco
 from vision_python.src.camera import camera_factory
 from vision_python.config import config
 
-# ---------------------------------------------------------------------------
-# Constantes globales
-# ---------------------------------------------------------------------------
-
-# Get fixed ArUco markers from config
-FIXED_MARKERS = config.get_fixed_aruco_markers()
-FIXED_IDS = {marker.aruco_id for marker in FIXED_MARKERS}
-
-# For backward compatibility
-A1, B1, C1, D1 = FIXED_MARKERS[0], FIXED_MARKERS[1], FIXED_MARKERS[2], FIXED_MARKERS[3]
 
 # ---------------------------------------------------------------------------
 # Fonctions
@@ -61,16 +51,7 @@ def run(image_queue=None) -> None:
             camera_mode = config.get_camera_mode()
             calibration_file = config.get_camera_calibration_file()
 
-            # Get image processing parameters from config
-            img_params = config.get_image_processing_params()
-            use_unround = img_params["use_unround"]
-            use_clahe = img_params["use_clahe"]
-            use_thresholding = img_params["use_thresholding"]
-            sharpen_alpha = img_params["sharpen_alpha"]
-            sharpen_beta = img_params["sharpen_beta"]
-            sharpen_gamma = img_params["sharpen_gamma"]
-
-            if camera_mode == config.CameraMode.EMULATED:
+            if camera_mode == "emulated":
                 # Use existing folder from config, don't create today's folder
                 daily_pictures_dir = config.get_emulated_cam_directory()
                 logger.info(f"Using emulated camera directory: {daily_pictures_dir}")
@@ -95,7 +76,7 @@ def run(image_queue=None) -> None:
             }
 
             # Only emulated camera needs image_folder parameter
-            if camera_mode == config.CameraMode.EMULATED:
+            if camera_mode == "emulated":
                 params["image_folder"] = daily_pictures_dir
 
             camera.set_parameters(params)
@@ -152,7 +133,7 @@ def run(image_queue=None) -> None:
                         }
 
                         # Only emulated camera needs image_folder parameter
-                        if camera_mode == config.CameraMode.EMULATED:
+                        if camera_mode == "emulated":
                             params["image_folder"] = daily_pictures_dir
 
                         camera.set_parameters(params)

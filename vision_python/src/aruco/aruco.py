@@ -11,8 +11,6 @@ import numpy as np
 import time as t
 import os
 import glob
-from aruco_initial_positions import get_expected_position, initial_position
-
 
 def get_camera_matrix() -> np.ndarray:
     """

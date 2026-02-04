@@ -1,0 +1,16 @@
+2026-02-03 20:41:03,568 - task_aruco_detection - ERROR - Error while loading configuration or preparing directories: module 'vision_python.config.config' has no attribute 'get_image_processing_params'
+2026-02-03 20:41:03,569 - task_aruco_detection - ERROR - Erreur fatale dans la tâche ArUco: module 'vision_python.config.config' has no attribute 'get_image_processing_params'
+2026-02-03 20:43:10,246 - task_aruco_detection - ERROR - Error while loading configuration or preparing directories: module 'vision_python.config.config' has no attribute 'get_image_processing_params'
+2026-02-03 20:43:10,247 - task_aruco_detection - ERROR - Erreur fatale dans la tâche ArUco: module 'vision_python.config.config' has no attribute 'get_image_processing_params'
+2026-02-03 20:47:46,147 - task_aruco_detection - ERROR - Error while loading configuration or preparing directories: module 'vision_python.config.config' has no attribute 'get_image_processing_params'
+2026-02-03 20:47:46,148 - task_aruco_detection - ERROR - Erreur fatale dans la tâche ArUco: module 'vision_python.config.config' has no attribute 'get_image_processing_params'
+2026-02-03 20:49:06,693 - task_aruco_detection - INFO - Using PiCamera in direct capture mode (no automatic saving)
+2026-02-03 20:49:06,693 - task_aruco_detection - ERROR - Error while initializing the camera: Unknown camera type: CameraMode.PI. Expected 'emulated', 'webcam', or 'picamera'.
+2026-02-03 20:49:06,693 - task_aruco_detection - ERROR - Erreur fatale dans la tâche ArUco: Unknown camera type: CameraMode.PI. Expected 'emulated', 'webcam', or 'picamera'.
+2026-02-03 20:51:36,626 - task_aruco_detection - INFO - Using PiCamera in direct capture mode (no automatic saving)
+2026-02-03 20:51:36,626 - task_aruco_detection - ERROR - Error while initializing the camera: cannot import name 'CameraMode' from 'vision_python.config.config' (/opt/roboteseo/picam/vision_python/config/config.py)
+2026-02-03 20:51:36,626 - task_aruco_detection - ERROR - Erreur fatale dans la tâche ArUco: cannot import name 'CameraMode' from 'vision_python.config.config' (/opt/roboteseo/picam/vision_python/config/config.py)
+2026-02-03 20:52:09,007 - task_aruco_detection - INFO - Using PiCamera in direct capture mode (no automatic saving)
+2026-02-03 20:52:09,023 - task_aruco_detection - ERROR - Error while initializing the camera: list index out of range
+2026-02-03 20:52:09,023 - task_aruco_detection - ERROR - Erreur fatale dans la tâche ArUco: list index out of range
+2026-02-03 20:52:09,024 - task_aruco_detection - INFO - Camera closed during shutdown
