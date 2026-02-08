@@ -15,7 +15,7 @@ sudo apt upgrade -y
 # Installation de libcamera
 sudo apt install -y libcamera-apps
 sudo apt install -y libcamera-dev
-sudo apt install -y libcamera
+
 
 # Installation de python et des bibliothèques nécessaires
 sudo apt install -y python3 
