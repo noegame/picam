@@ -482,6 +482,8 @@ def apply_pose_correction(x_detected, y_detected):
 def find_mask(
     detector: cv.aruco.ArucoDetector,
     img: np.ndarray,
+    camera_matrix: np.ndarray,
+    dist_matrix: np.ndarray,
     scale_y=1.0,
 ) -> tuple[np.ndarray, np.ndarray]:
     """
@@ -494,6 +496,8 @@ def find_mask(
     Args:
         detector (cv.aruco.ArucoDetector): ArUco detector instance
         img (np.ndarray): Input image (BGR)
+        camera_matrix (np.ndarray): Camera intrinsic matrix
+        dist_matrix (np.ndarray): Distortion coefficients
         scale_y (float): Vertical scaling factor for mask height
 
     Returns:
@@ -545,12 +549,22 @@ def find_mask(
     src_pts = np.array(src_pts, dtype=np.float32)
     dst_pts = np.array(dst_pts, dtype=np.float32)
 
+    # DEBUG: Log reference points
+    print(f"[DEBUG find_mask] Reference tags mapping:")
+    for i in range(len(src_pts)):
+        print(f"  Real world ({src_pts[i][0]:.0f}, {src_pts[i][1]:.0f}) -> Image ({dst_pts[i][0]:.1f}, {dst_pts[i][1]:.1f})")
+
     # Undistort image points before calculating homography
     dst_pts_reshaped = dst_pts.reshape(-1, 1, 2).astype(np.float32)
     dst_pts_undistorted = cv.fisheye.undistortPoints(
         dst_pts_reshaped, camera_matrix, dist_matrix, None, camera_matrix
     )
     dst_pts = dst_pts_undistorted.reshape(-1, 2)
+
+    # DEBUG: Log undistorted points
+    print(f"[DEBUG find_mask] After undistortion:")
+    for i in range(len(dst_pts)):
+        print(f"  Image undistorted: ({dst_pts[i][0]:.1f}, {dst_pts[i][1]:.1f})")
 
     # Homography real-world → image
     H, _ = cv.findHomography(src_pts, dst_pts)
@@ -575,6 +589,11 @@ def find_mask(
     terrain_img = cv.perspectiveTransform(terrain_irl, H)
     terrain_img = terrain_img.reshape(-1, 2)
 
+    # DEBUG: Log terrain corners in image coordinates
+    print(f"[DEBUG find_mask] Terrain corners in image (before scale/clip):")
+    for i, corner in enumerate(terrain_img):
+        print(f"  Corner {i}: ({corner[0]:.1f}, {corner[1]:.1f})")
+
     # ----- VERTICAL EXTENSION OF MASK -----
     if scale_y != 1.0:
         center_y = np.mean(terrain_img[:, 1])
@@ -585,6 +604,12 @@ def find_mask(
     terrain_img[:, 1] = np.clip(terrain_img[:, 1], 0, h - 1)
 
     terrain_img = terrain_img.astype(np.int32)
+
+    # DEBUG: Log final terrain corners
+    print(f"[DEBUG find_mask] Terrain corners in image (after scale/clip):")
+    for i, corner in enumerate(terrain_img):
+        print(f"  Corner {i}: ({corner[0]}, {corner[1]})")
+    print(f"[DEBUG find_mask] Image size: {w}x{h}")
 
     # Create mask (SAME SIZE AS IMAGE)
     mask = np.zeros((h, w), dtype=np.uint8)

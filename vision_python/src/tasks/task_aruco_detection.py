@@ -41,7 +41,7 @@ def run(image_queue=None) -> None:
     """
 
     logger = logging.getLogger("task_aruco_detection")
-    camera = None  # Initialize camera variable to avoid UnboundLocalError
+    camera = None 
 
     try:
         # Load configuration
@@ -100,15 +100,23 @@ def run(image_queue=None) -> None:
         H_inv = None
         ALLOWED_IDS = [20, 21, 22, 23, 41, 36, 47]
 
+        # Create daily directory for saving annotated images
+        today_date = datetime.now().strftime("%Y-%m-%d")
+        debug_dir = Path(f"pictures/camera/{today_date}")
+        debug_dir.mkdir(parents=True, exist_ok=True)
+        logger.info(f"Debug images will be saved to: {debug_dir}")
+
         end = False
         consecutive_errors = 0
         max_consecutive_errors = 5
+        frame_count = 0
 
         while end is False:
             # Take a picture
             try:
                 original_img = camera.take_picture()
                 consecutive_errors = 0  # Reset error counter on successful capture
+                frame_count += 1
 
             except Exception as e:
                 consecutive_errors += 1
@@ -148,24 +156,46 @@ def run(image_queue=None) -> None:
                 time.sleep(1)  # Avoid overload in case of capture error in loop
                 continue
 
-            # TODO : check if conversion is redundant
-            # Convert RGB to BGR for OpenCV processing
-            img_bgr = cv2.cvtColor(original_img, cv2.COLOR_RGB2BGR)
+            # PiCamera2 is configured to capture directly in BGR888 (OpenCV native format)
+            # No conversion needed
+            img_bgr = original_img
 
             # ========== STEP 1: COMPUTE MASK AND INVERSE HOMOGRAPHY (first frame only) ==========
             if mask is None or H_inv is None:
                 try:
-                    mask, H_inv = aruco.find_mask(aruco_detector, img_bgr, scale_y=1.1)
+                    mask, H_inv = aruco.find_mask(
+                        aruco_detector, img_bgr, camera_matrix, dist_matrix, scale_y=1.1
+                    )
                     logger.info("Mask and inverse homography computed successfully")
+                    
+                    # DEBUG: Save mask visualization
+                    mask_vis = cv2.cvtColor(img_bgr.copy(), cv2.COLOR_BGR2BGRA)
+                    mask_rgb = cv2.cvtColor(mask, cv2.COLOR_GRAY2BGR)
+                    mask_vis = cv2.addWeighted(mask_vis[:,:,:3], 0.7, mask_rgb, 0.3, 0)
+                    
+                    # Add terrain corners info
+                    mask_path = debug_dir / "mask_visualization.jpg"
+                    cv2.imwrite(str(mask_path), mask_vis, [cv2.IMWRITE_JPEG_QUALITY, 95])
+                    logger.info(f"Mask visualization saved to: {mask_path}")
+                    
                 except Exception as e:
                     logger.error(f"Failed to compute mask and homography: {e}")
                     time.sleep(0.1)
                     continue
 
             # ========== STEP 2: DETECT MARKERS ==========
+            # Use mask=None temporarily to fix detection issue
+            # TODO: Debug why mask blocks all tags
             corners, ids, rejected, detection_timings = aruco.detect_markers(
-                aruco_detector, img_bgr, mask=mask
+                aruco_detector, img_bgr, mask=None
             )
+
+            # DEBUG: Log all detected markers before filtering
+            if ids is not None:
+                detected_ids = [mid[0] if isinstance(mid, np.ndarray) else mid for mid in ids]
+                logger.info(f"Detected {len(detected_ids)} tags total - IDs: {detected_ids}")
+            else:
+                logger.warning("No markers detected!")
 
             # ========== STEP 3: FILTER ALLOWED IDS ==========
             valid_ids = []
@@ -179,6 +209,8 @@ def run(image_queue=None) -> None:
                     if mid in ALLOWED_IDS:
                         valid_ids.append(mid)
                         valid_corners.append(corners[i])
+                    else:
+                        logger.debug(f"ID {mid} not in ALLOWED_IDS, skipping")
 
             # ========== STEP 4: CALCULATE CENTERS ==========
             centers = []
@@ -220,6 +252,12 @@ def run(image_queue=None) -> None:
 
             # ========== STEP 7: ANNOTATE IMAGE FOR VISUALIZATION ==========
             final_img = img_bgr.copy()
+
+            # TODO: Re-enable mask visualization once mask issue is debugged
+            # if mask is not None:
+            #     mask_overlay = cv2.cvtColor(mask, cv2.COLOR_GRAY2BGR)
+            #     mask_overlay[:, :, 1] = mask  # Green channel
+            #     final_img = cv2.addWeighted(final_img, 0.9, mask_overlay, 0.1, 0)
 
             if len(tags_from_img) > 0:
                 # Annotate with counter
@@ -298,6 +336,42 @@ def run(image_queue=None) -> None:
                         )
                 except Exception as e:
                     logger.error(f"Failed to send data to UI queue: {e}", exc_info=True)
+
+            # ========== STEP 8: SAVE DEBUG IMAGES ==========
+            try:
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
+                
+                # Save original image (without annotations)
+                original_filename = f"{timestamp}.jpg"
+                original_path = debug_dir / original_filename
+                cv2.imwrite(str(original_path), img_bgr, [cv2.IMWRITE_JPEG_QUALITY, 95])
+                
+                # Save annotated image
+                annotated_filename = f"{timestamp}_annotated.jpg"
+                annotated_path = debug_dir / annotated_filename
+                
+                # Add debug info overlay
+                debug_img = final_img.copy()
+                font = cv2.FONT_HERSHEY_SIMPLEX
+                
+                # Info text
+                detected_count = len(detected_ids) if ids is not None else 0
+                info_lines = [
+                    f"Frame: {frame_count}",
+                    f"Tags detected (filtered): {len(tags_from_img)}",
+                    f"Total detected: {detected_count}",
+                ]
+                
+                y_offset = 40
+                for line in info_lines:
+                    cv2.putText(debug_img, line, (20, y_offset), font, 1.2, (0, 0, 0), 4)
+                    cv2.putText(debug_img, line, (20, y_offset), font, 1.2, (0, 255, 255), 2)
+                    y_offset += 40
+                
+                cv2.imwrite(str(annotated_path), debug_img, [cv2.IMWRITE_JPEG_QUALITY, 95])
+                logger.info(f"Images saved: {original_filename} and {annotated_filename}")
+            except Exception as e:
+                logger.error(f"Failed to save debug images: {e}")
 
             logger.info(
                 "Aruco detection iteration complete, waiting before next capture..."

@@ -26,6 +26,11 @@ class PiCamera(Camera):
 
     Gère la caméra du Raspberry Pi via la bibliothèque picamera2.
     """
+    
+    def __init__(self):
+        """Initialise l'instance PiCamera."""
+        self.picamera2 = None
+        self.parameters = {}
 
     def init(self) -> None:
         """Initialise le matériel de la caméra Raspberry Pi."""
@@ -38,7 +43,35 @@ class PiCamera(Camera):
             logger.error(f"Impossible d'initialiser PiCamera2: {e}")
             logger.error("Vérifiez que la caméra est bien connectée et activée")
             raise RuntimeError(f"Échec de l'initialisation de PiCamera2: {e}") from e
-        self.parameters = {}
+        
+        # Configure camera if parameters were set before init()
+        if self.parameters.get("width") and self.parameters.get("height"):
+            try:
+                width = self.parameters.get("width")
+                height = self.parameters.get("height")
+                config_mode = self.parameters.get("config_mode", "preview")
+                
+                if config_mode == "still":
+                    logger.info(f"Configuring camera in STILL mode (BGR): {width}x{height}")
+                    camera_config = self.picamera2.create_still_configuration(
+                        main={
+                            "format": "BGR888",
+                            "size": (width, height)
+                        }
+                    )
+                else:  # "preview" by default
+                    logger.info(f"Configuring camera in PREVIEW mode (BGR): {width}x{height}")
+                    camera_config = self.picamera2.create_preview_configuration(
+                        main={
+                            "format": "BGR888",
+                            "size": (width, height),
+                        }
+                    )
+                self.picamera2.configure(camera_config)
+                logger.info(f"Camera configured with resolution {width}x{height}")
+            except Exception as e:
+                logger.error(f"Erreur lors de la configuration de la caméra: {e}")
+                raise
 
     def start(self) -> None:
         """Démarre le flux vidéo de la caméra."""
@@ -107,9 +140,10 @@ class PiCamera(Camera):
         if needs_reconfigure and self.picamera2:
             try:
                 if self.parameters.get("config_mode") == "still":
-                    logger.info(f"Mode: STILL (captures uniques optimisées)")
+                    logger.info(f"Mode: STILL (captures uniques optimisées, BGR)")
                     camera_config = self.picamera2.create_still_configuration(
                         main={
+                            "format": "BGR888",
                             "size": (
                                 self.parameters.get("width"),
                                 self.parameters.get("height"),
@@ -117,10 +151,10 @@ class PiCamera(Camera):
                         }
                     )
                 else:  # "preview" by default
-                    logger.info(f"Mode: PREVIEW (streaming continu)")
+                    logger.info(f"Mode: PREVIEW (streaming continu, BGR)")
                     camera_config = self.picamera2.create_preview_configuration(
                         main={
-                            "format": "XRGB8888",
+                            "format": "BGR888",
                             "size": (
                                 self.parameters.get("width"),
                                 self.parameters.get("height"),

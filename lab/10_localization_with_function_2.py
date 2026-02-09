@@ -74,7 +74,7 @@ def get_output_folder() -> str:
         str: output folder path
     """
     script_name = os.path.splitext(os.path.basename(__file__))[0]
-    output_folder = os.path.join("pictures/debug", script_name)
+    output_folder = os.path.join("../pictures/debug", script_name)
     os.makedirs(output_folder, exist_ok=True)
     return output_folder
 
@@ -86,7 +86,7 @@ def get_input_folder() -> str:
     Returns:
         str: input folder path
     """
-    input_folder = "pictures/2026-01-16-playground-ready"
+    input_folder = "../pictures/camera/2026-01-16 playground-ready"
     return input_folder
 
 

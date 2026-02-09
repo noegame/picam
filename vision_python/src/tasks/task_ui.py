@@ -28,8 +28,10 @@ def generate_frames():
     while True:
         if latest_frame is not None:
             try:
+                # Convert BGR to RGB for web display
+                frame_rgb = cv2.cvtColor(latest_frame, cv2.COLOR_BGR2RGB)
                 # Encode frame as JPEG
-                ret, buffer = cv2.imencode(".jpg", latest_frame)
+                ret, buffer = cv2.imencode(".jpg", frame_rgb)
                 if ret:
                     frame_bytes = buffer.tobytes()
                     yield (
