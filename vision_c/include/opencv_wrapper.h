@@ -75,6 +75,88 @@ void releaseDetectionResult(DetectionResult* result);
 // Returns a new image with markers drawn (original image is not modified)
 ImageHandle* drawDetectedMarkers(ImageHandle* image, DetectionResult* result);
 
+// ===== Image Processing Functions =====
+
+// Convert BGRA to BGR
+ImageHandle* convert_bgra_to_bgr(ImageHandle* handle);
+
+// Apply mask to image using bitwise AND
+ImageHandle* bitwise_and_mask(ImageHandle* image, ImageHandle* mask);
+
+// Apply sharpening filter to image
+ImageHandle* sharpen_image(ImageHandle* image);
+
+// Resize image
+ImageHandle* resize_image(ImageHandle* image, int new_width, int new_height);
+
+// ===== Drawing Functions =====
+
+// Color structure for drawing
+typedef struct {
+    unsigned char b;
+    unsigned char g;
+    unsigned char r;
+} Color;
+
+// Add text to image
+void put_text(ImageHandle* image, const char* text, int x, int y, 
+              double font_scale, Color color, int thickness);
+
+// Fill polygon on image (for mask creation)
+ImageHandle* fill_poly(ImageHandle* image, float* points, int num_points, Color color);
+
+// Create empty image (for mask)
+ImageHandle* create_empty_image(int width, int height, int channels);
+
+// ===== Geometric Transformation Functions =====
+
+// Opaque handle for matrices
+typedef struct MatrixHandle MatrixHandle;
+
+// Point structure
+typedef struct {
+    float x;
+    float y;
+} Point2f;
+
+typedef struct {
+    float x;
+    float y;
+    float z;
+} Point3f;
+
+// Undistort points using fisheye model
+// Returns array of undistorted points (caller must free)
+Point2f* fisheye_undistort_points(Point2f* points, int num_points,
+                                   float* camera_matrix,  // 3x3 matrix
+                                   float* dist_coeffs,     // 4 coefficients
+                                   float* output_camera_matrix);  // 3x3 matrix (can be NULL)
+
+// Find homography matrix between two sets of points
+// Returns 3x3 homography matrix (caller must free)
+float* find_homography(Point2f* src_points, Point2f* dst_points, int num_points);
+
+// Apply perspective transform to points
+Point2f* perspective_transform(Point2f* points, int num_points, float* homography);
+
+// ===== Pose Estimation =====
+
+// SolvePnP result structure
+typedef struct {
+    float rvec[3];  // Rotation vector
+    float tvec[3];  // Translation vector
+    int success;    // 1 if successful, 0 otherwise
+} PnPResult;
+
+// Solve PnP (Perspective-n-Point) problem
+PnPResult solve_pnp(Point3f* object_points, Point2f* image_points, int num_points,
+                    float* camera_matrix, float* dist_coeffs);
+
+// Free allocated arrays
+void free_points_2f(Point2f* points);
+void free_points_3f(Point3f* points);
+void free_matrix(float* matrix);
+
 #ifdef __cplusplus
 }
 #endif

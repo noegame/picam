@@ -206,5 +206,270 @@ ImageHandle* drawDetectedMarkers(ImageHandle* image, DetectionResult* result) {
 }
 
 
+// ===== Image Processing Functions =====
+
+ImageHandle* convert_bgra_to_bgr(ImageHandle* handle) {
+    if (handle == nullptr) return nullptr;
+    
+    cv::Mat* src = reinterpret_cast<cv::Mat*>(handle);
+    cv::Mat* dst = new cv::Mat();
+    
+    cv::cvtColor(*src, *dst, cv::COLOR_BGRA2BGR);
+    
+    return reinterpret_cast<ImageHandle*>(dst);
+}
+
+ImageHandle* bitwise_and_mask(ImageHandle* image, ImageHandle* mask) {
+    if (image == nullptr || mask == nullptr) return nullptr;
+    
+    cv::Mat* img = reinterpret_cast<cv::Mat*>(image);
+    cv::Mat* msk = reinterpret_cast<cv::Mat*>(mask);
+    cv::Mat* result = new cv::Mat();
+    
+    cv::bitwise_and(*img, *img, *result, *msk);
+    
+    return reinterpret_cast<ImageHandle*>(result);
+}
+
+ImageHandle* sharpen_image(ImageHandle* image) {
+    if (image == nullptr) return nullptr;
+    
+    cv::Mat* src = reinterpret_cast<cv::Mat*>(image);
+    cv::Mat* dst = new cv::Mat();
+    
+    // Sharpening kernel
+    cv::Mat kernel = (cv::Mat_<float>(3, 3) << 
+        -1, -1, -1,
+        -1,  9, -1,
+        -1, -1, -1);
+    
+    cv::filter2D(*src, *dst, -1, kernel);
+    
+    return reinterpret_cast<ImageHandle*>(dst);
+}
+
+ImageHandle* resize_image(ImageHandle* image, int new_width, int new_height) {
+    if (image == nullptr) return nullptr;
+    
+    cv::Mat* src = reinterpret_cast<cv::Mat*>(image);
+    cv::Mat* dst = new cv::Mat();
+    
+    cv::resize(*src, *dst, cv::Size(new_width, new_height));
+    
+    return reinterpret_cast<ImageHandle*>(dst);
+}
+
+// ===== Drawing Functions =====
+
+void put_text(ImageHandle* image, const char* text, int x, int y, 
+              double font_scale, Color color, int thickness) {
+    if (image == nullptr || text == nullptr) return;
+    
+    cv::Mat* img = reinterpret_cast<cv::Mat*>(image);
+    cv::Scalar cv_color(color.b, color.g, color.r);
+    
+    cv::putText(*img, text, cv::Point(x, y), 
+                cv::FONT_HERSHEY_SIMPLEX, font_scale, cv_color, thickness);
+}
+
+ImageHandle* fill_poly(ImageHandle* image, float* points, int num_points, Color color) {
+    if (image == nullptr || points == nullptr) return nullptr;
+    
+    cv::Mat* img = reinterpret_cast<cv::Mat*>(image);
+    cv::Mat* result = new cv::Mat();
+    img->copyTo(*result);
+    
+    // Convert points to OpenCV format
+    std::vector<cv::Point> poly_points;
+    for (int i = 0; i < num_points; i++) {
+        poly_points.push_back(cv::Point(
+            static_cast<int>(points[i * 2]),
+            static_cast<int>(points[i * 2 + 1])
+        ));
+    }
+    
+    std::vector<std::vector<cv::Point>> polys = {poly_points};
+    cv::Scalar cv_color(color.b, color.g, color.r);
+    cv::fillPoly(*result, polys, cv_color);
+    
+    return reinterpret_cast<ImageHandle*>(result);
+}
+
+ImageHandle* create_empty_image(int width, int height, int channels) {
+    cv::Mat* img = new cv::Mat(height, width, 
+                               channels == 1 ? CV_8UC1 : CV_8UC3, 
+                               cv::Scalar(0));
+    return reinterpret_cast<ImageHandle*>(img);
+}
+
+// ===== Geometric Transformation Functions =====
+
+Point2f* fisheye_undistort_points(Point2f* points, int num_points,
+                                   float* camera_matrix,
+                                   float* dist_coeffs,
+                                   float* output_camera_matrix) {
+    if (points == nullptr || camera_matrix == nullptr || dist_coeffs == nullptr) {
+        return nullptr;
+    }
+    
+    // Convert input points to cv::Mat
+    std::vector<cv::Point2f> input_points;
+    for (int i = 0; i < num_points; i++) {
+        input_points.push_back(cv::Point2f(points[i].x, points[i].y));
+    }
+    cv::Mat points_mat(input_points);
+    points_mat = points_mat.reshape(1, num_points);  // Reshape to Nx2
+    
+    // Create camera matrix (3x3)
+    cv::Mat K = cv::Mat(3, 3, CV_32F, camera_matrix).clone();
+    K.convertTo(K, CV_64F);
+    
+    // Create distortion coefficients (4 coefficients for fisheye)
+    cv::Mat D = cv::Mat(1, 4, CV_32F, dist_coeffs).clone();
+    D.convertTo(D, CV_64F);
+    
+    // Output camera matrix (use input K if not specified)
+    cv::Mat P = K.clone();
+    if (output_camera_matrix != nullptr) {
+        P = cv::Mat(3, 3, CV_32F, output_camera_matrix).clone();
+        P.convertTo(P, CV_64F);
+    }
+    
+    // Undistort points
+    cv::Mat undistorted;
+    cv::fisheye::undistortPoints(points_mat, undistorted, K, D, cv::noArray(), P);
+    
+    // Convert output to Point2f array
+    Point2f* result = new Point2f[num_points];
+    for (int i = 0; i < num_points; i++) {
+        result[i].x = undistorted.at<float>(i, 0);
+        result[i].y = undistorted.at<float>(i, 1);
+    }
+    
+    return result;
+}
+
+float* find_homography(Point2f* src_points, Point2f* dst_points, int num_points) {
+    if (src_points == nullptr || dst_points == nullptr || num_points < 4) {
+        return nullptr;
+    }
+    
+    // Convert to OpenCV format
+    std::vector<cv::Point2f> src, dst;
+    for (int i = 0; i < num_points; i++) {
+        src.push_back(cv::Point2f(src_points[i].x, src_points[i].y));
+        dst.push_back(cv::Point2f(dst_points[i].x, dst_points[i].y));
+    }
+    
+    // Find homography
+    cv::Mat H = cv::findHomography(src, dst);
+    
+    if (H.empty()) return nullptr;
+    
+    // Convert to float array (3x3 = 9 elements)
+    float* result = new float[9];
+    for (int i = 0; i < 3; i++) {
+        for (int j = 0; j < 3; j++) {
+            result[i * 3 + j] = static_cast<float>(H.at<double>(i, j));
+        }
+    }
+    
+    return result;
+}
+
+Point2f* perspective_transform(Point2f* points, int num_points, float* homography) {
+    if (points == nullptr || homography == nullptr) return nullptr;
+    
+    // Convert input points
+    std::vector<cv::Point2f> input_points;
+    for (int i = 0; i < num_points; i++) {
+        input_points.push_back(cv::Point2f(points[i].x, points[i].y));
+    }
+    
+    // Create homography matrix
+    cv::Mat H(3, 3, CV_32F, homography);
+    H.convertTo(H, CV_64F);
+    
+    // Transform points
+    std::vector<cv::Point2f> output_points;
+    cv::perspectiveTransform(input_points, output_points, H);
+    
+    // Convert to Point2f array
+    Point2f* result = new Point2f[num_points];
+    for (int i = 0; i < num_points; i++) {
+        result[i].x = output_points[i].x;
+        result[i].y = output_points[i].y;
+    }
+    
+    return result;
+}
+
+// ===== Pose Estimation =====
+
+PnPResult solve_pnp(Point3f* object_points, Point2f* image_points, int num_points,
+                    float* camera_matrix, float* dist_coeffs) {
+    PnPResult result = {{0, 0, 0}, {0, 0, 0}, 0};
+    
+    if (object_points == nullptr || image_points == nullptr || 
+        camera_matrix == nullptr || dist_coeffs == nullptr || num_points < 4) {
+        return result;
+    }
+    
+    // Convert points
+    std::vector<cv::Point3f> obj_pts;
+    std::vector<cv::Point2f> img_pts;
+    
+    for (int i = 0; i < num_points; i++) {
+        obj_pts.push_back(cv::Point3f(object_points[i].x, object_points[i].y, object_points[i].z));
+        img_pts.push_back(cv::Point2f(image_points[i].x, image_points[i].y));
+    }
+    
+    // Create camera matrix
+    cv::Mat K = cv::Mat(3, 3, CV_32F, camera_matrix).clone();
+    K.convertTo(K, CV_64F);
+    
+    // Create distortion coefficients
+    cv::Mat D = cv::Mat(1, 4, CV_32F, dist_coeffs).clone();
+    D.convertTo(D, CV_64F);
+    
+    // Solve PnP
+    cv::Mat rvec, tvec;
+    bool success = cv::solvePnP(obj_pts, img_pts, K, D, rvec, tvec, 
+                                 false, cv::SOLVEPNP_IPPE_SQUARE);
+    
+    if (success) {
+        result.success = 1;
+        result.rvec[0] = static_cast<float>(rvec.at<double>(0));
+        result.rvec[1] = static_cast<float>(rvec.at<double>(1));
+        result.rvec[2] = static_cast<float>(rvec.at<double>(2));
+        result.tvec[0] = static_cast<float>(tvec.at<double>(0));
+        result.tvec[1] = static_cast<float>(tvec.at<double>(1));
+        result.tvec[2] = static_cast<float>(tvec.at<double>(2));
+    }
+    
+    return result;
+}
+
+// ===== Memory Management =====
+
+void free_points_2f(Point2f* points) {
+    if (points != nullptr) {
+        delete[] points;
+    }
+}
+
+void free_points_3f(Point3f* points) {
+    if (points != nullptr) {
+        delete[] points;
+    }
+}
+
+void free_matrix(float* matrix) {
+    if (matrix != nullptr) {
+        delete[] matrix;
+    }
+}
+
+
 } // extern "C"
 
