@@ -11,9 +11,37 @@ The objectives of this ROD project are:
 
 ## How it works
 
-ROD is working on two threads that communicate with each other through socket communication. The first thread is responsible for the computer vision part, while the second thread is responsible for the IPC (Inter-Process Communication) part.
+ROD is working on two threads that communicate with each other through socket communication. The first thread is responsible for the computer vision part, while the second thread is responsible for the communication part.
 
-The computer vision thread send to the IPC thread via socket an array that contain the list of detected objects with their coordinates [[id, x,y,angle], [id, x,y,angle], ...]. The IPC thread then send this array to the main process of the robot via shared memory.
+The computer vision thread captures images from the camera, processes them to detect ArUco TAGs, and calculates the coordinates of the detected objects. 
+
+The communication thread is responsible for printing the detected objects coordinates in the console. In futur it will be responsible for sending the detected objects coordinates to the main process of the robot.
+
+The computer vision thread send to the communication thread via socket an array that contain the list of detected objects with their coordinates [[id, x,y,angle], [id, x,y,angle], ...].
+
+### Running with systemd (Production)
+
+For production use on Raspberry Pi, ROD can be run as systemd services:
+
+```bash
+# Install services
+cd systemd
+sudo ./install.sh
+
+# Start ROD
+sudo systemctl start rod.target
+
+# Check status
+systemctl status rod.target
+
+# View logs
+sudo journalctl -u rod-detection.service -f
+
+# Enable at boot (optional)
+sudo systemctl enable rod.target
+```
+
+See [systemd/README.md](systemd/README.md) for complete documentation.
 
 ```plantuml
 rectangle "File structure"{

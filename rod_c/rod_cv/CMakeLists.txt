@@ -24,8 +24,29 @@ target_include_directories(opencv_wrapper PUBLIC
     ${OpenCV_INCLUDE_DIRS}
 )
 
+# Create rod_cv library with helper functions
+add_library(rod_cv STATIC
+    rod_cv.c
+)
+
+# Link with opencv_wrapper and math library
+target_link_libraries(rod_cv
+    opencv_wrapper
+    m
+)
+
+# Include directories for rod_cv
+target_include_directories(rod_cv PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}
+)
+
 # Install rules
-install(TARGETS opencv_wrapper
+install(TARGETS opencv_wrapper rod_cv
     LIBRARY DESTINATION lib
+    ARCHIVE DESTINATION lib
     PUBLIC_HEADER DESTINATION include/rod_cv
+)
+
+install(FILES rod_cv.h
+    DESTINATION include/rod_cv
 )

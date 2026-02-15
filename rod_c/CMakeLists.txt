@@ -36,6 +36,19 @@ add_subdirectory(rod_cv)
 add_subdirectory(rod_camera)
 add_subdirectory(tests)
 
+# Build main rod_detection executable
+add_executable(rod_detection rod_detection.c)
+target_link_libraries(rod_detection 
+    opencv_wrapper
+    rod_camera
+    ${OpenCV_LIBS}
+    m  # Math library for atan2f
+)
+
+# Build rod_communication executable
+add_executable(rod_communication rod_communication.c)
+# No special libraries needed for socket communication
+
 # Print configuration summary
 message(STATUS "=== ROD_C Build Configuration ===")
 message(STATUS "C Compiler: ${CMAKE_C_COMPILER}")

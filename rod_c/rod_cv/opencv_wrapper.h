@@ -37,6 +37,14 @@ typedef struct MarkerHandle MarkerHandle;
 // Load an image from file
 ImageHandle* load_image(const char* path);
 
+// Create an image from a memory buffer
+// data: pointer to image data (RGB or BGR format)
+// width: image width in pixels
+// height: image height in pixels
+// channels: number of channels (1=grayscale, 3=RGB/BGR, 4=RGBA/BGRA)
+// format: 0=BGR, 1=RGB, 2=RGBA, 3=BGRA, 4=GRAY
+ImageHandle* create_image_from_buffer(uint8_t* data, int width, int height, int channels, int format);
+
 // Release image memory
 void release_image(ImageHandle* handle);
 

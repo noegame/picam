@@ -16,6 +16,38 @@ ImageHandle* load_image(const char* path) {
     return reinterpret_cast<ImageHandle*>(image);
 }
 
+ImageHandle* create_image_from_buffer(uint8_t* data, int width, int height, int channels, int format) {
+    if (data == nullptr || width <= 0 || height <= 0 || channels <= 0) {
+        return nullptr;
+    }
+    
+    // Determine OpenCV type based on channels
+    int cv_type;
+    if (channels == 1) {
+        cv_type = CV_8UC1;
+    } else if (channels == 3) {
+        cv_type = CV_8UC3;
+    } else if (channels == 4) {
+        cv_type = CV_8UC4;
+    } else {
+        return nullptr;
+    }
+    
+    // Create Mat from buffer (makes a copy of the data)
+    cv::Mat* image = new cv::Mat(height, width, cv_type);
+    memcpy(image->data, data, width * height * channels);
+    
+    // Convert from RGB to BGR if needed (OpenCV uses BGR by default)
+    if (format == 1 && channels == 3) {  // RGB format
+        cv::cvtColor(*image, *image, cv::COLOR_RGB2BGR);
+    } else if (format == 2 && channels == 4) {  // RGBA format
+        cv::cvtColor(*image, *image, cv::COLOR_RGBA2BGRA);
+    }
+    // format 0 (BGR), 3 (BGRA), and 4 (GRAY) don't need conversion
+    
+    return reinterpret_cast<ImageHandle*>(image);
+}
+
 void release_image(ImageHandle* handle) {
     if (handle != nullptr) {
         cv::Mat* image = reinterpret_cast<cv::Mat*>(handle);

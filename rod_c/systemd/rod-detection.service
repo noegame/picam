@@ -1,0 +1,35 @@
+[Unit]
+Description=ROD Detection - Computer Vision Thread
+After=network.target
+
+[Service]
+Type=simple
+User=noegame
+Group=noegame
+WorkingDirectory=/home/noegame/ROD
+
+# Main detection process
+ExecStart=/home/noegame/ROD/rod_c/build/rod_detection pictures/2026-01-16-playground-ready
+
+# Restart policy
+Restart=always
+RestartSec=2
+
+# Resource limits
+MemoryMax=512M
+CPUQuota=80%
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=rod-detection
+
+# Security hardening
+NoNewPrivileges=true
+PrivateTmp=true
+
+# Clean up socket on stop
+ExecStopPost=/bin/rm -f /tmp/rod_detection.sock
+
+[Install]
+WantedBy=multi-user.target
