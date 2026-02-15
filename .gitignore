@@ -11,3 +11,4 @@ calibrations/*
 *.log
 *code-workspace
 *__pycache__/
+rod_c/docs/snippets/c.code-snippets

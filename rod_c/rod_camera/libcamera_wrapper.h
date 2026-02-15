@@ -1,17 +1,15 @@
 #ifndef LIBCAMERA_WRAPPER_H
 #define LIBCAMERA_WRAPPER_H
 
+#include <stdint.h>
+#include <stddef.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-struct LibCameraContext {
-    std::unique_ptr<CameraManager> camera_manager;
-    std::shared_ptr<Camera> camera;
-    std::unique_ptr<CameraConfiguration> config;
-    FrameBufferAllocator *allocator;
-    std::vector<std::unique_ptr<Request>> requests;
-};
+// Opaque handle to LibCamera context (actual definition in .cpp file)
+typedef struct LibCameraContext LibCameraContext;
 
 LibCameraContext* libcamera_init();
 int libcamera_open_camera(LibCameraContext* ctx, int camera_index);
@@ -26,4 +24,4 @@ void libcamera_cleanup(LibCameraContext* ctx);
 }
 #endif
 
-#endif // OPENCV_WRAPPER_H
+#endif // LIBCAMERA_WRAPPER_H

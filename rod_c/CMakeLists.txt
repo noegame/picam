@@ -1,0 +1,50 @@
+cmake_minimum_required(VERSION 3.16)
+project(ROD_C VERSION 1.0 LANGUAGES C CXX)
+
+# Set C and C++ standards
+set(CMAKE_C_STANDARD 11)
+set(CMAKE_C_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# Add compilation flags
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra")
+
+# Find required packages
+find_package(OpenCV REQUIRED)
+find_package(PkgConfig REQUIRED)
+
+# Try to find libcamera (optional)
+pkg_check_modules(LIBCAMERA libcamera)
+
+# Include directories
+include_directories(
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/rod_cv
+    ${CMAKE_CURRENT_SOURCE_DIR}/rod_camera
+    ${OpenCV_INCLUDE_DIRS}
+)
+
+if(LIBCAMERA_FOUND)
+    include_directories(${LIBCAMERA_INCLUDE_DIRS})
+    add_compile_definitions(HAVE_LIBCAMERA)
+endif()
+
+# Add subdirectories
+add_subdirectory(rod_cv)
+add_subdirectory(rod_camera)
+add_subdirectory(tests)
+
+# Print configuration summary
+message(STATUS "=== ROD_C Build Configuration ===")
+message(STATUS "C Compiler: ${CMAKE_C_COMPILER}")
+message(STATUS "C++ Compiler: ${CMAKE_CXX_COMPILER}")
+message(STATUS "OpenCV Version: ${OpenCV_VERSION}")
+message(STATUS "OpenCV Libraries: ${OpenCV_LIBS}")
+if(LIBCAMERA_FOUND)
+    message(STATUS "libcamera: Found")
+else()
+    message(STATUS "libcamera: Not found (camera support will be limited)")
+endif()
+message(STATUS "================================")

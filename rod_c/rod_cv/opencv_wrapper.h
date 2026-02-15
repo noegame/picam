@@ -1,6 +1,9 @@
 #ifndef OPENCV_WRAPPER_H
 #define OPENCV_WRAPPER_H
 
+#include <stdint.h>
+#include <stddef.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -40,6 +43,19 @@ void release_image(ImageHandle* handle);
 // Get image dimensions
 int get_image_width(ImageHandle* handle);
 int get_image_height(ImageHandle* handle);
+
+// Get number of channels in image
+int get_image_channels(ImageHandle* handle);
+
+// Get raw image data (returns pointer to internal data, do not free)
+// Data is in the format used by OpenCV (usually BGR for color images)
+uint8_t* get_image_data(ImageHandle* handle);
+
+// Get image data size in bytes
+size_t get_image_data_size(ImageHandle* handle);
+
+// Convert BGR to RGB (creates a new image)
+ImageHandle* convert_bgr_to_rgb(ImageHandle* handle);
 
 // Convert image to grayscale
 ImageHandle* convert_to_grayscale(ImageHandle* handle);

@@ -5,8 +5,18 @@
 #include <thread>
 #include <chrono>
 #include <sys/mman.h>
+#include <vector>
 
 using namespace libcamera;
+
+// Internal definition of LibCameraContext (C++ types)
+struct LibCameraContext {
+    std::unique_ptr<CameraManager> camera_manager;
+    std::shared_ptr<Camera> camera;
+    std::unique_ptr<CameraConfiguration> config;
+    FrameBufferAllocator *allocator;
+    std::vector<std::unique_ptr<Request>> requests;
+};
 
 extern "C" {
 

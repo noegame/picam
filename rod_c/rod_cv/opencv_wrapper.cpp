@@ -35,6 +35,37 @@ int get_image_height(ImageHandle* handle) {
     return image->rows;
 }
 
+int get_image_channels(ImageHandle* handle) {
+    if (handle == nullptr) return 0;
+    cv::Mat* image = reinterpret_cast<cv::Mat*>(handle);
+    return image->channels();
+}
+
+uint8_t* get_image_data(ImageHandle* handle) {
+    if (handle == nullptr) return nullptr;
+    cv::Mat* image = reinterpret_cast<cv::Mat*>(handle);
+    if (image->empty()) return nullptr;
+    return image->data;
+}
+
+size_t get_image_data_size(ImageHandle* handle) {
+    if (handle == nullptr) return 0;
+    cv::Mat* image = reinterpret_cast<cv::Mat*>(handle);
+    if (image->empty()) return 0;
+    return image->total() * image->elemSize();
+}
+
+ImageHandle* convert_bgr_to_rgb(ImageHandle* handle) {
+    if (handle == nullptr) return nullptr;
+    
+    cv::Mat* src = reinterpret_cast<cv::Mat*>(handle);
+    cv::Mat* rgb = new cv::Mat();
+    
+    cv::cvtColor(*src, *rgb, cv::COLOR_BGR2RGB);
+    
+    return reinterpret_cast<ImageHandle*>(rgb);
+}
+
 ImageHandle* convert_to_grayscale(ImageHandle* handle) {
     if (handle == nullptr) return nullptr;
     
