@@ -102,6 +102,79 @@ void releaseDetectorParameters(DetectorParametersHandle* params) {
     }
 }
 
+// Detector parameters setters (matching Python implementation)
+void setAdaptiveThreshWinSizeMin(DetectorParametersHandle* params, int value) {
+    if (params == nullptr) return;
+    cv::Ptr<cv::aruco::DetectorParameters>* p = reinterpret_cast<cv::Ptr<cv::aruco::DetectorParameters>*>(params);
+    (*p)->adaptiveThreshWinSizeMin = value;
+}
+
+void setAdaptiveThreshWinSizeMax(DetectorParametersHandle* params, int value) {
+    if (params == nullptr) return;
+    cv::Ptr<cv::aruco::DetectorParameters>* p = reinterpret_cast<cv::Ptr<cv::aruco::DetectorParameters>*>(params);
+    (*p)->adaptiveThreshWinSizeMax = value;
+}
+
+void setAdaptiveThreshWinSizeStep(DetectorParametersHandle* params, int value) {
+    if (params == nullptr) return;
+    cv::Ptr<cv::aruco::DetectorParameters>* p = reinterpret_cast<cv::Ptr<cv::aruco::DetectorParameters>*>(params);
+    (*p)->adaptiveThreshWinSizeStep = value;
+}
+
+void setMinMarkerPerimeterRate(DetectorParametersHandle* params, double value) {
+    if (params == nullptr) return;
+    cv::Ptr<cv::aruco::DetectorParameters>* p = reinterpret_cast<cv::Ptr<cv::aruco::DetectorParameters>*>(params);
+    (*p)->minMarkerPerimeterRate = value;
+}
+
+void setMaxMarkerPerimeterRate(DetectorParametersHandle* params, double value) {
+    if (params == nullptr) return;
+    cv::Ptr<cv::aruco::DetectorParameters>* p = reinterpret_cast<cv::Ptr<cv::aruco::DetectorParameters>*>(params);
+    (*p)->maxMarkerPerimeterRate = value;
+}
+
+void setPolygonalApproxAccuracyRate(DetectorParametersHandle* params, double value) {
+    if (params == nullptr) return;
+    cv::Ptr<cv::aruco::DetectorParameters>* p = reinterpret_cast<cv::Ptr<cv::aruco::DetectorParameters>*>(params);
+    (*p)->polygonalApproxAccuracyRate = value;
+}
+
+void setCornerRefinementMethod(DetectorParametersHandle* params, int method) {
+    if (params == nullptr) return;
+    cv::Ptr<cv::aruco::DetectorParameters>* p = reinterpret_cast<cv::Ptr<cv::aruco::DetectorParameters>*>(params);
+    (*p)->cornerRefinementMethod = method;
+}
+
+void setCornerRefinementWinSize(DetectorParametersHandle* params, int value) {
+    if (params == nullptr) return;
+    cv::Ptr<cv::aruco::DetectorParameters>* p = reinterpret_cast<cv::Ptr<cv::aruco::DetectorParameters>*>(params);
+    (*p)->cornerRefinementWinSize = value;
+}
+
+void setCornerRefinementMaxIterations(DetectorParametersHandle* params, int value) {
+    if (params == nullptr) return;
+    cv::Ptr<cv::aruco::DetectorParameters>* p = reinterpret_cast<cv::Ptr<cv::aruco::DetectorParameters>*>(params);
+    (*p)->cornerRefinementMaxIterations = value;
+}
+
+void setMinDistanceToBorder(DetectorParametersHandle* params, int value) {
+    if (params == nullptr) return;
+    cv::Ptr<cv::aruco::DetectorParameters>* p = reinterpret_cast<cv::Ptr<cv::aruco::DetectorParameters>*>(params);
+    (*p)->minDistanceToBorder = value;
+}
+
+void setMinOtsuStdDev(DetectorParametersHandle* params, double value) {
+    if (params == nullptr) return;
+    cv::Ptr<cv::aruco::DetectorParameters>* p = reinterpret_cast<cv::Ptr<cv::aruco::DetectorParameters>*>(params);
+    (*p)->minOtsuStdDev = value;
+}
+
+void setPerspectiveRemoveIgnoredMarginPerCell(DetectorParametersHandle* params, double value) {
+    if (params == nullptr) return;
+    cv::Ptr<cv::aruco::DetectorParameters>* p = reinterpret_cast<cv::Ptr<cv::aruco::DetectorParameters>*>(params);
+    (*p)->perspectiveRemoveIgnoredMarginPerCell = value;
+}
+
 DetectionResult* detectMarkersWithConfidence(ArucoDetectorHandle* detector, ImageHandle* image) {
     if (detector == nullptr || image == nullptr) return nullptr;
     

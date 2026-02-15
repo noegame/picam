@@ -56,8 +56,105 @@ typedef struct {
     int blue_markers;    // ID 36
     int yellow_markers;  // ID 47
     int robot_markers;   // IDs 1-10
+    int fixed_markers;   // IDs 20-23
     int total;
 } MarkerCounts;
+
+/**
+ * Configure ArUco detector parameters matching Python implementation.
+ * These optimized parameters enable detection of ~40 markers instead of just 7.
+ * Values from get_aruco_detector() in Python code.
+ */
+void configure_detector_parameters(DetectorParametersHandle* params) {
+    // Adaptive thresholding parameters
+    setAdaptiveThreshWinSizeMin(params, 3);
+    setAdaptiveThreshWinSizeMax(params, 53);
+    setAdaptiveThreshWinSizeStep(params, 4);
+    
+    // Marker size constraints
+    setMinMarkerPerimeterRate(params, 0.01);
+    setMaxMarkerPerimeterRate(params, 4.0);
+    
+    // Polygon approximation accuracy
+    setPolygonalApproxAccuracyRate(params, 0.05);
+    
+    // Corner refinement for sub-pixel accuracy
+    setCornerRefinementMethod(params, CORNER_REFINE_SUBPIX);
+    setCornerRefinementWinSize(params, 5);
+    setCornerRefinementMaxIterations(params, 50);
+    
+    // Detection constraints
+    setMinDistanceToBorder(params, 0);
+    setMinOtsuStdDev(params, 2.0);
+    
+    // Perspective removal
+    setPerspectiveRemoveIgnoredMarginPerCell(params, 0.15);
+}
+
+/**
+ * Check if a marker ID is valid according to Eurobot 2026 rules.
+ * Valid IDs:
+ * - 1-5: Blue team robots
+ * - 6-10: Yellow team robots
+ * - 20-23: Fixed markers on field
+ * - 36: Blue box
+ * - 41: Empty box (black)
+ * - 47: Yellow box
+ */
+int is_valid_marker_id(int id) {
+    return (id >= 1 && id <= 10) ||    // Robots
+           (id >= 20 && id <= 23) ||   // Fixed markers
+           (id == 36) ||                // Blue box
+           (id == 41) ||                // Empty box
+           (id == 47);                  // Yellow box
+}
+
+/**
+ * Filter detection results to keep only valid marker IDs.
+ * Returns a new DetectionResult with only valid markers.
+ * Original result should be freed by caller after using the filtered result.
+ */
+DetectionResult* filter_valid_markers(DetectionResult* result) {
+    if (result == NULL || result->count == 0) return result;
+    
+    // Count valid markers
+    int valid_count = 0;
+    for (int i = 0; i < result->count; i++) {
+        if (is_valid_marker_id(result->markers[i].id)) {
+            valid_count++;
+        }
+    }
+    
+    // If all markers are valid, return original result
+    if (valid_count == result->count) return result;
+    
+    // Create new filtered result
+    DetectionResult* filtered = (DetectionResult*)malloc(sizeof(DetectionResult));
+    if (filtered == NULL) return result;
+    
+    filtered->count = valid_count;
+    if (valid_count == 0) {
+        filtered->markers = NULL;
+        return filtered;
+    }
+    
+    filtered->markers = (DetectedMarker*)malloc(sizeof(DetectedMarker) * valid_count);
+    if (filtered->markers == NULL) {
+        free(filtered);
+        return result;
+    }
+    
+    // Copy valid markers
+    int idx = 0;
+    for (int i = 0; i < result->count; i++) {
+        if (is_valid_marker_id(result->markers[i].id)) {
+            filtered->markers[idx] = result->markers[i];
+            idx++;
+        }
+    }
+    
+    return filtered;
+}
 
 /**
  * Categorize and count markers by type based on ArUco IDs
@@ -65,9 +162,10 @@ typedef struct {
  * - ID 41: empty box (black)
  * - ID 47: yellow box
  * - IDs 1-10: robots
+ * - IDs 20-23: fixed markers
  */
 MarkerCounts count_markers_by_category(DetectionResult* result) {
-    MarkerCounts counts = {0, 0, 0, 0, 0};
+    MarkerCounts counts = {0, 0, 0, 0, 0, 0};
     
     for (int i = 0; i < result->count; i++) {
         int id = result->markers[i].id;
@@ -80,6 +178,8 @@ MarkerCounts count_markers_by_category(DetectionResult* result) {
             counts.yellow_markers++;
         } else if (id >= 1 && id <= 10) {
             counts.robot_markers++;
+        } else if (id >= 20 && id <= 23) {
+            counts.fixed_markers++;
         }
         counts.total++;
     }
@@ -167,12 +267,12 @@ void annotate_with_counter(ImageHandle* image, MarkerCounts counts) {
     char text[64];
     
     // Black markers
-    snprintf(text, sizeof(text), "black markers  : %d", counts.black_markers);
+    snprintf(text, sizeof(text), "black markers : %d", counts.black_markers);
     put_text(image, text, start_x, start_y, font_scale, black, 3);
     put_text(image, text, start_x, start_y, font_scale, green, 2);
     
     // Blue markers
-    snprintf(text, sizeof(text), "blue markers   : %d", counts.blue_markers);
+    snprintf(text, sizeof(text), "blue markers : %d", counts.blue_markers);
     put_text(image, text, start_x, start_y + line_height, font_scale, black, 3);
     put_text(image, text, start_x, start_y + line_height, font_scale, green, 2);
     
@@ -186,10 +286,15 @@ void annotate_with_counter(ImageHandle* image, MarkerCounts counts) {
     put_text(image, text, start_x, start_y + line_height * 3, font_scale, black, 3);
     put_text(image, text, start_x, start_y + line_height * 3, font_scale, green, 2);
     
-    // Total
-    snprintf(text, sizeof(text), "total          : %d", counts.total);
+    // Fixed markers
+    snprintf(text, sizeof(text), "fixed markers : %d", counts.fixed_markers);
     put_text(image, text, start_x, start_y + line_height * 4, font_scale, black, 3);
     put_text(image, text, start_x, start_y + line_height * 4, font_scale, green, 2);
+    
+    // Total
+    snprintf(text, sizeof(text), "total : %d", counts.total);
+    put_text(image, text, start_x, start_y + line_height * 5, font_scale, black, 3);
+    put_text(image, text, start_x, start_y + line_height * 5, font_scale, green, 2);
 }
 
 /**
@@ -295,6 +400,11 @@ int main(int argc, char** argv) {
         return -1;
     }
     
+    // Configure detector parameters to match Python implementation
+    // This enables detection of ~40 markers instead of just 7
+    configure_detector_parameters(params);
+    printf("      Detector parameters configured (matching Python)\n");
+    
     ArucoDetectorHandle* detector = createArucoDetector(dictionary, params);
     if (detector == NULL) {
         fprintf(stderr, "Error: Could not create ArUco detector\n");
@@ -305,8 +415,8 @@ int main(int argc, char** argv) {
     }
     
     // Detect markers on resized image
-    DetectionResult* result = detectMarkersWithConfidence(detector, resized);
-    if (result == NULL) {
+    DetectionResult* result_raw = detectMarkersWithConfidence(detector, resized);
+    if (result_raw == NULL) {
         fprintf(stderr, "Error: Detection failed\n");
         releaseArucoDetector(detector);
         releaseDetectorParameters(params);
@@ -315,7 +425,21 @@ int main(int argc, char** argv) {
         return -1;
     }
     
-    printf("      Detected %d marker(s)\n", result->count);
+    printf("      Detected %d marker(s) (raw)\n", result_raw->count);
+    
+    // Filter to keep only valid marker IDs (reject false positives)
+    DetectionResult* result = filter_valid_markers(result_raw);
+    int rejected_count = result_raw->count - result->count;
+    
+    if (rejected_count > 0) {
+        printf("      Filtered out %d invalid marker(s)\n", rejected_count);
+    }
+    printf("      Valid markers: %d\n", result->count);
+    
+    // Free raw result if it was replaced by filtered result
+    if (result != result_raw) {
+        releaseDetectionResult(result_raw);
+    }
     
     // ========== STEP 5: CALCULATE CENTERS ==========
     printf("[5/7] Calculating marker centers...\n");
@@ -391,6 +515,7 @@ int main(int argc, char** argv) {
     printf("Blue markers   : %d\n", counts.blue_markers);
     printf("Yellow markers : %d\n", counts.yellow_markers);
     printf("Robots markers : %d\n", counts.robot_markers);
+    printf("Fixed markers  : %d\n", counts.fixed_markers);
     printf("Total markers  : %d\n\n", counts.total);
     
     for (int i = 0; i < result->count; i++) {

@@ -67,6 +67,26 @@ void releaseArucoDetector(ArucoDetectorHandle* detector);
 void releaseArucoDictionary(ArucoDictionaryHandle* dict);
 void releaseDetectorParameters(DetectorParametersHandle* params);
 
+// Detector parameters configuration (matching Python implementation)
+void setAdaptiveThreshWinSizeMin(DetectorParametersHandle* params, int value);
+void setAdaptiveThreshWinSizeMax(DetectorParametersHandle* params, int value);
+void setAdaptiveThreshWinSizeStep(DetectorParametersHandle* params, int value);
+void setMinMarkerPerimeterRate(DetectorParametersHandle* params, double value);
+void setMaxMarkerPerimeterRate(DetectorParametersHandle* params, double value);
+void setPolygonalApproxAccuracyRate(DetectorParametersHandle* params, double value);
+void setCornerRefinementMethod(DetectorParametersHandle* params, int method);
+void setCornerRefinementWinSize(DetectorParametersHandle* params, int value);
+void setCornerRefinementMaxIterations(DetectorParametersHandle* params, int value);
+void setMinDistanceToBorder(DetectorParametersHandle* params, int value);
+void setMinOtsuStdDev(DetectorParametersHandle* params, double value);
+void setPerspectiveRemoveIgnoredMarginPerCell(DetectorParametersHandle* params, double value);
+
+// Corner refinement method constants (matching OpenCV)
+#define CORNER_REFINE_NONE 0
+#define CORNER_REFINE_SUBPIX 1
+#define CORNER_REFINE_CONTOUR 2
+#define CORNER_REFINE_APRILTAG 3
+
 // Detect markers with confidence scores
 DetectionResult* detectMarkersWithConfidence(ArucoDetectorHandle* detector, ImageHandle* image);
 void releaseDetectionResult(DetectionResult* result);
