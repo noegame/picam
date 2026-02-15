@@ -1,1 +1,0 @@
-Read the program. Explain to me what could be improved (why and how). Do not modify the code.

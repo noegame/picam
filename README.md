@@ -1,6 +1,6 @@
-# ZOD
+# ROD
 
-## Sommaire
+## Summary
 - [Description](#description)
 - [Documentation](#documentation)
 
@@ -19,6 +19,8 @@ This repository is a simple proof of concept of such a ROD using a Raspberry Pi 
 - [How to connect to the raspberry pi](docs/how-to-connect.md)
 - [How to test the camera quickly](docs/how-to-test-the-camera.md)
 - [How to calibrate the camera](docs/how-to-calibrate-the-camera.md)
-- [How to to run](docs/how-to-run.md)
 - [Some code documentation](docs/code-documentation.md)
 - [2026 Eurobot rules summary](docs/2026-eurobot-rules.md)
+- [General Eurobot rules summary](docs/general-eurobot-rules.md)
+- [ROD C](rod_c/readme.md)
+- [ROD Python](rod_python/readme.md)

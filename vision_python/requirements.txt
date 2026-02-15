@@ -1,8 +1,0 @@
-black
-colorlog
-flask
-numpy
-opencv-python
-picamera2
-pip
-python-dotenv

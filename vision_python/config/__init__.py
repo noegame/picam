@@ -1,3 +1,0 @@
-"""
-PiCam Configuration Module
-"""
