@@ -29,9 +29,10 @@ add_library(rod_cv STATIC
     rod_cv.c
 )
 
-# Link with opencv_wrapper and math library
+# Link with opencv_wrapper, rod_config and math library
 target_link_libraries(rod_cv
     opencv_wrapper
+    rod_config
     m
 )
 

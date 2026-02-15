@@ -16,9 +16,11 @@
 
 #include "rod_cv.h"
 #include "opencv_wrapper.h"
+#include "../rod_config/rod_config.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <string.h>
 
 /* ***************************************************** Public macros *************************************************** */
 
@@ -93,4 +95,58 @@ float normalize_angle(float angle) {
         angle += 2.0f * M_PI;
     }
     return angle;
+}
+
+int filter_valid_markers(DetectionResult* result, MarkerData* filtered_markers, int max_markers) {
+    if (result == NULL || filtered_markers == NULL || max_markers <= 0) {
+        return 0;
+    }
+    
+    int valid_count = 0;
+    
+    for (int i = 0; i < result->count && valid_count < max_markers; i++) {
+        DetectedMarker* marker = &result->markers[i];
+        
+        // Only keep valid marker IDs
+        if (!rod_config_is_valid_marker_id(marker->id)) {
+            continue;
+        }
+        
+        // Calculate center and angle
+        Point2f center = calculate_marker_center(marker->corners);
+        float angle = calculate_marker_angle(marker->corners);
+        
+        // Store marker data
+        filtered_markers[valid_count].id = marker->id;
+        filtered_markers[valid_count].x = center.x;
+        filtered_markers[valid_count].y = center.y;
+        filtered_markers[valid_count].angle = angle;
+        valid_count++;
+    }
+    
+    return valid_count;
+}
+
+MarkerCounts count_markers_by_category(MarkerData* markers, int count) {
+    MarkerCounts counts;
+    memset(&counts, 0, sizeof(MarkerCounts));
+    
+    for (int i = 0; i < count; i++) {
+        int id = markers[i].id;
+        
+        if (id == 41) {
+            counts.black_markers++;
+        } else if (id == 36) {
+            counts.blue_markers++;
+        } else if (id == 47) {
+            counts.yellow_markers++;
+        } else if (id >= 1 && id <= 10) {
+            counts.robot_markers++;
+        } else if (id >= 20 && id <= 23) {
+            counts.fixed_markers++;
+        }
+        counts.total++;
+    }
+    
+    return counts;
 }

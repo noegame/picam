@@ -23,6 +23,9 @@ include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/rod_cv
     ${CMAKE_CURRENT_SOURCE_DIR}/rod_camera
+    ${CMAKE_CURRENT_SOURCE_DIR}/rod_config
+    ${CMAKE_CURRENT_SOURCE_DIR}/rod_visualization
+    ${CMAKE_CURRENT_SOURCE_DIR}/rod_socket
     ${OpenCV_INCLUDE_DIRS}
 )
 
@@ -34,12 +37,19 @@ endif()
 # Add subdirectories
 add_subdirectory(rod_cv)
 add_subdirectory(rod_camera)
+add_subdirectory(rod_config)
+add_subdirectory(rod_visualization)
+add_subdirectory(rod_socket)
 add_subdirectory(tests)
 
 # Build main rod_detection executable
 add_executable(rod_detection rod_detection.c)
 target_link_libraries(rod_detection 
     opencv_wrapper
+    rod_cv
+    rod_config
+    rod_visualization
+    rod_socket
     rod_camera
     ${OpenCV_LIBS}
     m  # Math library for atan2f

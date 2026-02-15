@@ -18,6 +18,28 @@
 /* ************************************************** Public types definition ******************************************** */
 
 /**
+ * @brief Structure to hold marker detection data (standardized across ROD)
+ */
+typedef struct {
+    int id;
+    float x;
+    float y;
+    float angle;
+} MarkerData;
+
+/**
+ * @brief Structure to hold marker counts by category
+ */
+typedef struct {
+    int black_markers;   // ID 41
+    int blue_markers;    // ID 36
+    int yellow_markers;  // ID 47
+    int robot_markers;   // IDs 1-10
+    int fixed_markers;   // IDs 20-23
+    int total;
+} MarkerCounts;
+
+/**
  * @brief Structure to hold 3D position and orientation
  */
 typedef struct {
@@ -88,6 +110,26 @@ float deg_to_rad(float degrees);
  * @return Normalized angle
  */
 float normalize_angle(float angle);
+
+/**
+ * @brief Filter detection results to keep only valid marker IDs
+ * @param result Original detection result
+ * @param filtered_markers Output array for filtered markers (must be allocated by caller)
+ * @param max_markers Maximum number of markers to store in output
+ * @return Number of valid markers found
+ * 
+ * This function converts DetectionResult to MarkerData array, filtering invalid IDs.
+ * Caller must allocate filtered_markers array with sufficient size.
+ */
+int filter_valid_markers(DetectionResult* result, MarkerData* filtered_markers, int max_markers);
+
+/**
+ * @brief Count markers by category
+ * @param markers Array of marker data
+ * @param count Number of markers
+ * @return MarkerCounts structure with counts by category
+ */
+MarkerCounts count_markers_by_category(MarkerData* markers, int count);
 
 /**
  * @brief Pose estimation of aruco marker in a picture

@@ -7,11 +7,16 @@ add_executable(test_aruco_detection_pipeline
 
 target_link_libraries(test_aruco_detection_pipeline
     opencv_wrapper
+    rod_cv
+    rod_config
+    rod_visualization
     m  # Math library for sqrt, etc.
 )
 
 target_include_directories(test_aruco_detection_pipeline PRIVATE
     ${CMAKE_SOURCE_DIR}/rod_cv
+    ${CMAKE_SOURCE_DIR}/rod_config
+    ${CMAKE_SOURCE_DIR}/rod_visualization
 )
 
 # Legacy name alias for test_rod_cv
@@ -21,11 +26,16 @@ add_executable(test_rod_cv
 
 target_link_libraries(test_rod_cv
     opencv_wrapper
+    rod_cv
+    rod_config
+    rod_visualization
     m
 )
 
 target_include_directories(test_rod_cv PRIVATE
     ${CMAKE_SOURCE_DIR}/rod_cv
+    ${CMAKE_SOURCE_DIR}/rod_config
+    ${CMAKE_SOURCE_DIR}/rod_visualization
 )
 
 # Emulated camera test
