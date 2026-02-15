@@ -18,6 +18,7 @@ sudo systemctl start rod.target
 ```bash
 sudo systemctl stop rod.target
 ```
+> **Note :** L'arrêt peut prendre quelques secondes car les services se terminent proprement.
 
 ### Redémarrer ROD
 ```bash

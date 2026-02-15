@@ -3,6 +3,7 @@ Description=ROD Communication - IPC Thread
 After=network.target rod-detection.service
 Requires=rod-detection.service
 BindsTo=rod-detection.service
+PartOf=rod.target
 
 [Service]
 Type=simple
@@ -31,7 +32,7 @@ SyslogIdentifier=rod-communication
 
 # Security hardening
 NoNewPrivileges=true
-PrivateTmp=true
+# PrivateTmp=true removed to allow socket sharing with rod-detection
 
 [Install]
 WantedBy=multi-user.target

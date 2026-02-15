@@ -1,6 +1,7 @@
 [Unit]
 Description=ROD Detection - Computer Vision Thread
 After=network.target
+PartOf=rod.target
 
 [Service]
 Type=simple
@@ -26,7 +27,7 @@ SyslogIdentifier=rod-detection
 
 # Security hardening
 NoNewPrivileges=true
-PrivateTmp=true
+# PrivateTmp=true removed to allow socket sharing with rod-communication
 
 # Clean up socket on stop
 ExecStopPost=/bin/rm -f /tmp/rod_detection.sock
