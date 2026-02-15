@@ -34,12 +34,15 @@
 // Default image folder path for emulated camera
 #define DEFAULT_IMAGE_FOLDER "pictures/2026-01-16-playground-ready"
 
+// Debug image output folder
+#define DEBUG_OUTPUT_FOLDER "pictures/debug"
+
 // Socket configuration
 #define SOCKET_PATH "/tmp/rod_detection.sock"
 #define MAX_DETECTION_SIZE 1024
 
-// Detection loop timing (microseconds)
-#define DETECTION_LOOP_DELAY 100000  // 100ms = 10 FPS
+// Debug image saving (save one annotated image every N frames)
+#define SAVE_DEBUG_IMAGE_INTERVAL 1  // Save every frame
 
 /* ************************************************** Public types definition ******************************************** */
 
@@ -52,6 +55,18 @@ typedef struct {
     float y;
     float angle;
 } MarkerData;
+
+/**
+ * @brief Structure to hold marker counts by category
+ */
+typedef struct {
+    int black_markers;   // ID 41
+    int blue_markers;    // ID 36
+    int yellow_markers;  // ID 47
+    int robot_markers;   // IDs 1-10
+    int fixed_markers;   // IDs 20-23
+    int total;
+} MarkerCounts;
 
 /**
  * @brief Application context
@@ -143,6 +158,46 @@ static int try_accept_client(AppContext* ctx);
  * @return 0 on success, -1 on failure
  */
 static int send_detection_results(AppContext* ctx, MarkerData* markers, int count);
+
+/**
+ * @brief Count markers by category
+ * @param markers Array of marker data
+ * @param count Number of markers
+ * @return MarkerCounts structure with counts by category
+ */
+static MarkerCounts count_markers_by_category(MarkerData* markers, int count);
+
+/**
+ * @brief Annotate image with marker IDs
+ * @param image Image handle
+ * @param markers Array of marker data
+ * @param count Number of markers
+ */
+static void annotate_with_ids(ImageHandle* image, MarkerData* markers, int count);
+
+/**
+ * @brief Annotate image with marker centers
+ * @param image Image handle
+ * @param markers Array of marker data
+ * @param count Number of markers
+ */
+static void annotate_with_centers(ImageHandle* image, MarkerData* markers, int count);
+
+/**
+ * @brief Annotate image with categorized marker counts
+ * @param image Image handle
+ * @param counts Marker counts by category
+ */
+static void annotate_with_counter(ImageHandle* image, MarkerCounts counts);
+
+/**
+ * @brief Save annotated debug image
+ * @param image Original image
+ * @param markers Array of marker data
+ * @param count Number of markers
+ * @param frame_count Frame number for filename
+ */
+static void save_debug_image(ImageHandle* image, MarkerData* markers, int count, int frame_count);
 
 /**
  * @brief Signal handler for graceful shutdown
@@ -438,6 +493,163 @@ static int send_detection_results(AppContext* ctx, MarkerData* markers, int coun
     return 0;
 }
 
+static MarkerCounts count_markers_by_category(MarkerData* markers, int count) {
+    MarkerCounts counts = {0, 0, 0, 0, 0, 0};
+    
+    for (int i = 0; i < count; i++) {
+        int id = markers[i].id;
+        
+        if (id == 41) {
+            counts.black_markers++;
+        } else if (id == 36) {
+            counts.blue_markers++;
+        } else if (id == 47) {
+            counts.yellow_markers++;
+        } else if (id >= 1 && id <= 10) {
+            counts.robot_markers++;
+        } else if (id >= 20 && id <= 23) {
+            counts.fixed_markers++;
+        }
+        counts.total++;
+    }
+    
+    return counts;
+}
+
+static void annotate_with_ids(ImageHandle* image, MarkerData* markers, int count) {
+    Color black = {0, 0, 0};
+    Color green = {0, 255, 0};
+    double font_scale = 0.5;
+    
+    for (int i = 0; i < count; i++) {
+        char text[32];
+        snprintf(text, sizeof(text), "ID:%d", markers[i].id);
+        
+        int x = (int)markers[i].x;
+        int y = (int)markers[i].y;
+        
+        // Black outline
+        put_text(image, text, x, y, font_scale, black, 3);
+        // Green text
+        put_text(image, text, x, y, font_scale, green, 1);
+    }
+}
+
+static void annotate_with_centers(ImageHandle* image, MarkerData* markers, int count) {
+    Color black = {0, 0, 0};
+    Color blue = {255, 0, 0};
+    double font_scale = 0.5;
+    
+    for (int i = 0; i < count; i++) {
+        char text[64];
+        snprintf(text, sizeof(text), "(%d,%d)", (int)markers[i].x, (int)markers[i].y);
+        
+        int x = (int)markers[i].x;
+        int y = (int)markers[i].y - 20;
+        
+        // Black outline
+        put_text(image, text, x, y, font_scale, black, 3);
+        // Blue text
+        put_text(image, text, x, y, font_scale, blue, 1);
+    }
+}
+
+static void annotate_with_counter(ImageHandle* image, MarkerCounts counts) {
+    Color black = {0, 0, 0};
+    Color green = {0, 255, 0};
+    double font_scale = 0.8;
+    int line_height = 35;
+    int start_x = 30;
+    int start_y = 40;
+    
+    char text[64];
+    
+    // Black markers
+    snprintf(text, sizeof(text), "black markers : %d", counts.black_markers);
+    put_text(image, text, start_x, start_y, font_scale, black, 3);
+    put_text(image, text, start_x, start_y, font_scale, green, 2);
+    
+    // Blue markers
+    snprintf(text, sizeof(text), "blue markers : %d", counts.blue_markers);
+    put_text(image, text, start_x, start_y + line_height, font_scale, black, 3);
+    put_text(image, text, start_x, start_y + line_height, font_scale, green, 2);
+    
+    // Yellow markers
+    snprintf(text, sizeof(text), "yellow markers : %d", counts.yellow_markers);
+    put_text(image, text, start_x, start_y + line_height * 2, font_scale, black, 3);
+    put_text(image, text, start_x, start_y + line_height * 2, font_scale, green, 2);
+    
+    // Robot markers
+    snprintf(text, sizeof(text), "robots markers : %d", counts.robot_markers);
+    put_text(image, text, start_x, start_y + line_height * 3, font_scale, black, 3);
+    put_text(image, text, start_x, start_y + line_height * 3, font_scale, green, 2);
+    
+    // Fixed markers
+    snprintf(text, sizeof(text), "fixed markers : %d", counts.fixed_markers);
+    put_text(image, text, start_x, start_y + line_height * 4, font_scale, black, 3);
+    put_text(image, text, start_x, start_y + line_height * 4, font_scale, green, 2);
+    
+    // Total
+    snprintf(text, sizeof(text), "total : %d", counts.total);
+    put_text(image, text, start_x, start_y + line_height * 5, font_scale, black, 3);
+    put_text(image, text, start_x, start_y + line_height * 5, font_scale, green, 2);
+}
+
+static void save_debug_image(ImageHandle* image, MarkerData* markers, int count, int frame_count) {
+    // Create a copy of the image by extracting its data
+    int width = get_image_width(image);
+    int height = get_image_height(image);
+    int channels = get_image_channels(image);
+    uint8_t* data = get_image_data(image);
+    size_t data_size = get_image_data_size(image);
+    
+    if (!data || data_size == 0) {
+        fprintf(stderr, "Failed to get image data for debug output\n");
+        return;
+    }
+    
+    // Create a copy of the data
+    uint8_t* data_copy = (uint8_t*)malloc(data_size);
+    if (!data_copy) {
+        fprintf(stderr, "Failed to allocate memory for image copy\n");
+        return;
+    }
+    memcpy(data_copy, data, data_size);
+    
+    // Create new image from the copy (format=0 for BGR)
+    ImageHandle* annotated = create_image_from_buffer(data_copy, width, height, channels, 0);
+    free(data_copy);  // Buffer is copied by create_image_from_buffer
+    
+    if (!annotated) {
+        fprintf(stderr, "Failed to create image copy for debug output\n");
+        return;
+    }
+    
+    // Count markers by category
+    MarkerCounts marker_counts = count_markers_by_category(markers, count);
+    
+    // Annotate the copied image
+    annotate_with_counter(annotated, marker_counts);
+    if (count > 0) {
+        annotate_with_ids(annotated, markers, count);
+        annotate_with_centers(annotated, markers, count);
+    }
+    
+    // Build filename with timestamp
+    char filename[256];
+    snprintf(filename, sizeof(filename), "%s/frame_%06d.jpg", DEBUG_OUTPUT_FOLDER, frame_count);
+    
+    // Save image
+    if (save_image(filename, annotated)) {
+        printf("Debug image saved: %s (markers: %d)\n", filename, count);
+    } else {
+        fprintf(stderr, "Failed to save debug image: %s\n", filename);
+    }
+    
+    // Release annotated image
+    release_image(annotated);
+}
+
 /**
  * @brief Main function of the program
  * Takes a picture with the emulated camera, find the aruco markers position with rod-cv, 
@@ -491,7 +703,7 @@ int main(int argc, char* argv[]) {
         if (emulated_camera_take_picture(ctx.camera, &image_buffer, 
                                          &width, &height, &size) != 0) {
             fprintf(stderr, "Failed to capture image\n");
-            usleep(DETECTION_LOOP_DELAY);
+            usleep(10000);  // Wait 10ms before retry
             continue;
         }
         
@@ -502,7 +714,7 @@ int main(int argc, char* argv[]) {
         
         if (!image) {
             fprintf(stderr, "Failed to create image from buffer\n");
-            usleep(DETECTION_LOOP_DELAY);
+            usleep(10000);  // Wait 10ms before retry
             continue;
         }
         
@@ -539,19 +751,27 @@ int main(int argc, char* argv[]) {
                 send_detection_results(&ctx, markers, valid_count);
             }
             
+            // Save debug image periodically
+            if (frame_count % SAVE_DEBUG_IMAGE_INTERVAL == 0) {
+                save_debug_image(image, markers, valid_count, frame_count);
+            }
+            
             releaseDetectionResult(detection);
         } else {
             // No markers detected
             if (frame_count % 10 == 0) {
                 printf("Frame %d: No markers detected\n", frame_count);
             }
+            
+            // Save debug image periodically even when no markers detected
+            if (frame_count % SAVE_DEBUG_IMAGE_INTERVAL == 0) {
+                MarkerData empty_markers[1];
+                save_debug_image(image, empty_markers, 0, frame_count);
+            }
         }
         
         // Release image
         release_image(image);
-        
-        // Control frame rate
-        usleep(DETECTION_LOOP_DELAY);
     }
     
     printf("\nShutting down...\n");
