@@ -9,5 +9,9 @@
 
 ### Arcuo ID meaning
 - 36 : blue box
-- 41 : empty box
+- 41 : empty box (black)
 - 47 : yellow box
+
+## Information about eurobot competition general rules : 
+- The robots from the blue team will receive markers with ArUco 4x4 tags numbered between 1 and 5
+- The robots from the yellow team will receive markers with ArUco 4x4 tags numbered between 6 and 10

@@ -1,4 +1,5 @@
 #include <opencv2/opencv.hpp>
+#include <opencv2/aruco.hpp>
 #include "opencv_wrapper.h"
 
 extern "C" {
@@ -52,44 +53,51 @@ int save_image(const char* path, ImageHandle* handle) {
     return cv::imwrite(path, *image) ? 1 : 0;
 }
 
+// Structure to hold detector state for OpenCV 4.6 compatibility
+struct ArucoDetectorState {
+    cv::Ptr<cv::aruco::Dictionary> dictionary;
+    cv::Ptr<cv::aruco::DetectorParameters> parameters;
+};
+
 ArucoDictionaryHandle* getPredefinedDictionary(int dict_id) {
-    cv::aruco::Dictionary dictionary = cv::aruco::getPredefinedDictionary(dict_id);
-    cv::aruco::Dictionary* dict_ptr = new cv::aruco::Dictionary(dictionary);
+    cv::Ptr<cv::aruco::Dictionary> dict = cv::aruco::getPredefinedDictionary(dict_id);
+    cv::Ptr<cv::aruco::Dictionary>* dict_ptr = new cv::Ptr<cv::aruco::Dictionary>(dict);
     return reinterpret_cast<ArucoDictionaryHandle*>(dict_ptr);
 }
 
 DetectorParametersHandle* createDetectorParameters() {
-    cv::aruco::DetectorParameters* params = new cv::aruco::DetectorParameters();
-    return reinterpret_cast<DetectorParametersHandle*>(params);
+    cv::Ptr<cv::aruco::DetectorParameters> params = cv::aruco::DetectorParameters::create();
+    cv::Ptr<cv::aruco::DetectorParameters>* params_ptr = new cv::Ptr<cv::aruco::DetectorParameters>(params);
+    return reinterpret_cast<DetectorParametersHandle*>(params_ptr);
 }
 
 ArucoDetectorHandle* createArucoDetector(ArucoDictionaryHandle* dict, DetectorParametersHandle* params) {
     if (dict == nullptr || params == nullptr) return nullptr;
     
-    cv::aruco::Dictionary* dictionary = reinterpret_cast<cv::aruco::Dictionary*>(dict);
-    cv::aruco::DetectorParameters* detectorParams = reinterpret_cast<cv::aruco::DetectorParameters*>(params);
+    ArucoDetectorState* state = new ArucoDetectorState();
+    state->dictionary = *reinterpret_cast<cv::Ptr<cv::aruco::Dictionary>*>(dict);
+    state->parameters = *reinterpret_cast<cv::Ptr<cv::aruco::DetectorParameters>*>(params);
     
-    cv::aruco::ArucoDetector* detector = new cv::aruco::ArucoDetector(*dictionary, *detectorParams);
-    return reinterpret_cast<ArucoDetectorHandle*>(detector);
+    return reinterpret_cast<ArucoDetectorHandle*>(state);
 }
 
 void releaseArucoDetector(ArucoDetectorHandle* detector) {
     if (detector != nullptr) {
-        cv::aruco::ArucoDetector* det = reinterpret_cast<cv::aruco::ArucoDetector*>(detector);
-        delete det;
+        ArucoDetectorState* state = reinterpret_cast<ArucoDetectorState*>(detector);
+        delete state;
     }
 }
 
 void releaseArucoDictionary(ArucoDictionaryHandle* dict) {
     if (dict != nullptr) {
-        cv::aruco::Dictionary* dictionary = reinterpret_cast<cv::aruco::Dictionary*>(dict);
+        cv::Ptr<cv::aruco::Dictionary>* dictionary = reinterpret_cast<cv::Ptr<cv::aruco::Dictionary>*>(dict);
         delete dictionary;
     }
 }
 
 void releaseDetectorParameters(DetectorParametersHandle* params) {
     if (params != nullptr) {
-        cv::aruco::DetectorParameters* detectorParams = reinterpret_cast<cv::aruco::DetectorParameters*>(params);
+        cv::Ptr<cv::aruco::DetectorParameters>* detectorParams = reinterpret_cast<cv::Ptr<cv::aruco::DetectorParameters>*>(params);
         delete detectorParams;
     }
 }
@@ -97,14 +105,14 @@ void releaseDetectorParameters(DetectorParametersHandle* params) {
 DetectionResult* detectMarkersWithConfidence(ArucoDetectorHandle* detector, ImageHandle* image) {
     if (detector == nullptr || image == nullptr) return nullptr;
     
-    cv::aruco::ArucoDetector* det = reinterpret_cast<cv::aruco::ArucoDetector*>(detector);
+    ArucoDetectorState* state = reinterpret_cast<ArucoDetectorState*>(detector);
     cv::Mat* img = reinterpret_cast<cv::Mat*>(image);
     
     std::vector<int> markerIds;
     std::vector<std::vector<cv::Point2f>> markerCorners, rejectedCandidates;
     
-    // Detect markers
-    det->detectMarkers(*img, markerCorners, markerIds, rejectedCandidates);
+    // Detect markers using OpenCV 4.6 API
+    cv::aruco::detectMarkers(*img, state->dictionary, markerCorners, markerIds, state->parameters, rejectedCandidates);
     
     // Create result structure
     DetectionResult* result = new DetectionResult();
